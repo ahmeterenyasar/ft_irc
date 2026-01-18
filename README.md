@@ -7,5 +7,6 @@
 
 
 # TODO
+- Handle SIGINT and SIGQUIT signals
 
 
