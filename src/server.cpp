@@ -1,8 +1,9 @@
 #include "../inc/server.hpp"
+#include "../inc/client.hpp"
 
-Server::Server() : _port(0), _password("") {}
+Server::Server() : _server_fd(-1), _port(0), _password("") {}
 
-Server::Server(int port, const std::string& password) : _port(port), _password(password) {
+Server::Server(int port, const std::string& password) : _server_fd(-1), _port(port), _password(password) {
 }
 
 Server::Server(const Server& other) {
@@ -30,11 +31,6 @@ void Server::start_sockaddr_struct()
     _serverAddr.sin_family = AF_INET;
     _serverAddr.sin_addr.s_addr = INADDR_ANY;
     _serverAddr.sin_port = htons(_port);
-    // std::cout << "========== SOCKET ADDRESS DEBUG ==========" << std::endl;
-    // std::cout << "IP Address : "<< inet_ntoa(_serverAddr.sin_addr) << std::endl;
-    // std::cout << "Port       : "<< ntohs(_serverAddr.sin_port) << std::endl;
-    // std::cout << "Family     : -> "<< familyToString(_serverAddr.sin_family) << std::endl;
-    // std::cout << "=========================================" << std::endl;
 }
 
 void Server::socket_initialization()
@@ -64,8 +60,7 @@ void Server::socket_configuration()
 
 void  Server::server_bind()
 {
-    bindValue = bind(_server_fd, (struct sockaddr*)&_serverAddr, sizeof(_serverAddr));
-    if (bindValue < 0) {
+    if (bind(_server_fd, (struct sockaddr*)&_serverAddr, sizeof(_serverAddr)) < 0) {
         perror("Bind failed");
         close(_server_fd);
         exit(EXIT_FAILURE);
@@ -116,6 +111,26 @@ void Server::init_run()
     std::cout << "=====================================\n\n";
 }
 
+/*
+*/
+void Server::sendSimpleWelcome(int clientFd)
+{
+    std::string welcomeMsg;
+
+    welcomeMsg += "\r\n";
+    welcomeMsg += "  Hos geldin,-\r\n";
+    welcomeMsg += "--------------------------------------------\r\n";
+    welcomeMsg += "  PASS Komutu İle Giriş Yap:\r\n";
+    welcomeMsg += "--------------------------------------------\r\n";
+    welcomeMsg += "\r\n";
+
+    // Gönder gitsin
+    if (send(clientFd, welcomeMsg.c_str(), welcomeMsg.length(), 0) == -1) {
+        std::cerr << "Error: Mesaj gonderilemedi." << std::endl;
+    }
+}
+/**/
+
 void Server::accept_new_connection() 
 {
     while(41)
@@ -139,10 +154,12 @@ void Server::accept_new_connection()
         p.revents = 0;
         _pollFds.push_back(p);
 
+
         std::cout << "[DEBUG] New client accepted fd=" << client_fd
                   << " ip=" << inet_ntoa(client_address.sin_addr)
                   << " port=" << ntohs(client_address.sin_port) << "\n";
     }
+    sendSimpleWelcome(_pollFds.back().fd);
 }
 
 void Server::disconnectClient(size_t index) 
@@ -152,6 +169,7 @@ void Server::disconnectClient(size_t index)
     int client_fd = _pollFds[index].fd;
     close(client_fd);
     _pollFds.erase(_pollFds.begin() + index);
+    _inbuf.erase(client_fd);
     std::cout << "[DEBUG] Client disconnected fd=" << client_fd << "\n";
 }
 
@@ -174,7 +192,6 @@ void Server::client_read(size_t fd, size_t index)
         disconnectClient(index);
         return;
     }
-
     _inbuf[fd].append(buf, n);
     std::string &buffer = _inbuf[fd];
     size_t pos;
@@ -185,6 +202,7 @@ void Server::client_read(size_t fd, size_t index)
             line.erase(line.size() - 1);
         buffer.erase(0, pos + 1);
         std::cout << "[IRC] fd=" << fd << " cmd=\"" << line << "\"\n";
+        // parse 
     }
 }
 
@@ -216,11 +234,12 @@ void Server::run()
                 else
                 {
                     if(_pollFds[i].revents & POLLIN)
-                        client_read(_pollFds[i].fd, i); // Pass index, not fd
-                    else if(_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
+                        client_read(_pollFds[i].fd, i); // İstemciden veri okuma
+                    if(_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
                     {
-                        disconnectClient(i);
-                        --i; 
+                        disconnectClient(i); // İstemci bağlantısını kesme
+                        --i;
+                        continue;
                     }
                 }
             }

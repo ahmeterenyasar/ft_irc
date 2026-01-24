@@ -25,7 +25,6 @@ class Server
 		std::string	_password; // Sunucu parolası
 		struct sockaddr_in _serverAddr; // Sunucu adres bilgisi
 		std::vector<struct pollfd> _pollFds; // poll için kullanılan dosya tanıtıcıları
-		int bindValue; // bind fonksiyonunun dönüş değeri
 		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
 
 	public:
@@ -46,6 +45,7 @@ class Server
 		void accept_new_connection(); // Yeni bağlantıları kabul etmek için
 		void disconnectClient(size_t index); // İstemci bağlantısını kesmek için
 		void client_read(size_t fd, size_t index); // İstemciden veri okumak için
+		void sendSimpleWelcome(int clientFd); // Basit bir hoş geldin mesajı göndermek için
 };
 
 // debug fonksiyonu
