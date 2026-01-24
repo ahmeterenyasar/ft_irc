@@ -38,10 +38,14 @@ class Server
         void socket_initialization();
         void socket_configuration();
         void server_bind();
+        void server_listen();
         void run();
 };
 
 // debug fonksiyonu
 std::string familyToString(int family);
+
+// utils fonk
+bool isValidPort(char *port_str);
 
 #endif

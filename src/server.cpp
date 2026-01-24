@@ -31,12 +31,11 @@ void Server::start_sockaddr_struct()
     _serverAddr.sin_family = AF_INET;
     _serverAddr.sin_addr.s_addr = INADDR_ANY;
     _serverAddr.sin_port = htons(_port);
-
-    std::cout << "========== SOCKET ADDRESS DEBUG ==========" << std::endl;
-    std::cout << "IP Address : "<< inet_ntoa(_serverAddr.sin_addr) << std::endl;
-    std::cout << "Port       : "<< ntohs(_serverAddr.sin_port) << std::endl;
-    std::cout << "Family     : -> "<< familyToString(_serverAddr.sin_family) << std::endl;
-    std::cout << "=========================================" << std::endl;
+    // std::cout << "========== SOCKET ADDRESS DEBUG ==========" << std::endl;
+    // std::cout << "IP Address : "<< inet_ntoa(_serverAddr.sin_addr) << std::endl;
+    // std::cout << "Port       : "<< ntohs(_serverAddr.sin_port) << std::endl;
+    // std::cout << "Family     : -> "<< familyToString(_serverAddr.sin_family) << std::endl;
+    // std::cout << "=========================================" << std::endl;
 }
 
 void Server::socket_initialization()
@@ -74,6 +73,14 @@ void  Server::server_bind()
     }
 }
 
+void Server::server_listen()
+{
+    if (listen(_server_fd, SOMAXCONN) < 0) {
+        perror("Listen failed");
+        close(_server_fd);
+        exit(EXIT_FAILURE);
+    }
+}
 
 void  Server::init() 
 {
@@ -81,5 +88,16 @@ void  Server::init()
     socket_configuration(); // setsocketopt (bind fail önlemek için ve fcntl ile non-blocking)
     start_sockaddr_struct(); // Initialize sockaddr_in structure
     server_bind();
+    server_listen();
     std::cout << "Server socket created, fd = " << _server_fd << std::endl;  
+}
+
+void Server::run() 
+{
+    
+    while (42)
+    {
+        int Berat = poll(_pollFds);
+    }
+
 }
