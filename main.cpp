@@ -24,7 +24,6 @@ int main(int argc, char **argv)
         server.init();
 
         server.run(); 
-
     
     }   
     catch(const std::exception& e)

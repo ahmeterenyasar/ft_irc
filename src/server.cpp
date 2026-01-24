@@ -1,5 +1,4 @@
 #include "../inc/server.hpp"
-#include "server.hpp"
 
 Server::Server() : _port(0), _password("") {}
 
@@ -92,12 +91,139 @@ void  Server::init()
     std::cout << "Server socket created, fd = " << _server_fd << std::endl;  
 }
 
-void Server::run() 
+void Server::init_run()
 {
-    
-    while (42)
+    struct pollfd serverPollFd;
+    serverPollFd.fd = _server_fd; // Sunucu soket dosya tanıtıcısı
+    serverPollFd.events = POLLIN; // Gelen bağlantılar için dinle
+    serverPollFd.revents = 0; // Başlangıçta olay yok
+    _pollFds.push_back(serverPollFd); // Sunucu soketini pollFds vektörüne ekler
+
+      // ===== DEBUG OUTPUT =====
+    std::cout << "\n========== POLL INIT DEBUG ==========\n";
+    std::cout << "Added pollfd entry\n";
+    std::cout << "Index      : " << _pollFds.size() - 1 << "\n";
+    std::cout << "FD         : " << serverPollFd.fd << "\n";
+
+    std::cout << "Events     : ";
+    if (serverPollFd.events & POLLIN)  std::cout << "POLLIN ";
+    if (serverPollFd.events & POLLOUT) std::cout << "POLLOUT ";
+    if (serverPollFd.events & POLLERR) std::cout << "POLLERR ";
+    std::cout << "\n";
+
+    std::cout << "Revents    : " << serverPollFd.revents << "\n";
+    std::cout << "Total fds  : " << _pollFds.size() << "\n";
+    std::cout << "=====================================\n\n";
+}
+
+void Server::accept_new_connection() 
+{
+    while(41)
     {
-        int Berat = poll(_pollFds);
+        struct sockaddr_in client_address;
+        socklen_t client_len = sizeof(client_address); // İstemci adres uzunluğu
+        int client_fd = accept(_server_fd, (struct sockaddr*)&client_address, &client_len); // Yeni bağlantıyı kabul et
+        if (client_fd < 0) 
+        {
+            if (errno == EWOULDBLOCK || errno == EAGAIN)
+                break; // Tüm bağlantılar kabul edildi
+            perror("Accept failed");
+            break;
+        } 
+        int flags = fcntl(client_fd, F_GETFL, 0);  // Mevcut bayrakları al
+        if (flags != -1) 
+            fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
+        pollfd p; 
+        p.fd = client_fd;
+        p.events = POLLIN;
+        p.revents = 0;
+        _pollFds.push_back(p);
+
+        std::cout << "[DEBUG] New client accepted fd=" << client_fd
+                  << " ip=" << inet_ntoa(client_address.sin_addr)
+                  << " port=" << ntohs(client_address.sin_port) << "\n";
+    }
+}
+
+void Server::disconnectClient(size_t index) 
+{
+    if (index >= _pollFds.size())
+        return;
+    int client_fd = _pollFds[index].fd;
+    close(client_fd);
+    _pollFds.erase(_pollFds.begin() + index);
+    std::cout << "[DEBUG] Client disconnected fd=" << client_fd << "\n";
+}
+
+void Server::client_read(size_t fd, size_t index)
+{
+    char buf[512];
+
+    ssize_t n = recv(fd, buf, sizeof(buf), 0);
+    if (n == 0)
+    {
+        std::cout << "[DEBUG] Client closed connection fd=" << fd << "\n";
+        disconnectClient(index);
+        return;
+    }
+    if (n < 0)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return;
+        perror("recv");
+        disconnectClient(index);
+        return;
     }
 
+    _inbuf[fd].append(buf, n);
+    std::string &buffer = _inbuf[fd];
+    size_t pos;
+    while ((pos = buffer.find("\n")) != std::string::npos)
+    {
+        std::string line = buffer.substr(0, pos);
+        if (!line.empty() && line[line.size() - 1] == '\r')
+            line.erase(line.size() - 1);
+        buffer.erase(0, pos + 1);
+        std::cout << "[IRC] fd=" << fd << " cmd=\"" << line << "\"\n";
+    }
+}
+
+
+void Server::run() 
+{
+    init_run();
+    while (42)
+    {
+        int pollCount = poll(&_pollFds[0], _pollFds.size(), -1);
+        if (pollCount < 0)
+        {
+             if (errno == EINTR)
+                continue;
+            perror("Poll failed");
+            break;
+        }
+        for (size_t i = 0; i < _pollFds.size(); ++i )
+        {
+            if (_pollFds[i].revents == 0)
+                continue;
+            if (_pollFds[i].revents & POLLIN)
+            {
+                if (_pollFds[i].fd == _server_fd)
+                {
+                    if (_pollFds[i].revents & POLLIN)
+                        accept_new_connection();
+                }
+                else
+                {
+                    if(_pollFds[i].revents & POLLIN)
+                        client_read(_pollFds[i].fd, i); // Pass index, not fd
+                    else if(_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
+                    {
+                        disconnectClient(i);
+                        --i; 
+                    }
+                }
+            }
+        }
+    }
 }

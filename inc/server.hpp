@@ -15,6 +15,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <map>
 
 class Server
 {
@@ -25,6 +26,7 @@ class Server
 		struct sockaddr_in _serverAddr; // Sunucu adres bilgisi
 		std::vector<struct pollfd> _pollFds; // poll için kullanılan dosya tanıtıcıları
 		int bindValue; // bind fonksiyonunun dönüş değeri
+		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
 
 	public:
 		Server();
@@ -35,11 +37,15 @@ class Server
 
 		void init(); // Sunucuyu başlatmak için
 		void start_sockaddr_struct(); // sockaddr_in yapısını başlatmak için
-        void socket_initialization();
-        void socket_configuration();
-        void server_bind();
-        void server_listen();
-        void run();
+        void socket_initialization(); // socket oluşturma
+        void socket_configuration(); // setsockopt ve fcntl ayarları
+        void server_bind(); // bind işlemi
+        void server_listen(); // listen işlemi
+		void init_run(); // pollfd yapılarını başlatmak için
+        void run(); // Sunucuyu çalıştırmak için
+		void accept_new_connection(); // Yeni bağlantıları kabul etmek için
+		void disconnectClient(size_t index); // İstemci bağlantısını kesmek için
+		void client_read(size_t fd, size_t index); // İstemciden veri okumak için
 };
 
 // debug fonksiyonu

@@ -7,7 +7,7 @@ CXXFLAGS	= -Wall -Wextra -Werror -std=c++98
 SRCDIR		= .
 OBJDIR		= obj
 
-SOURCES		= main.cpp src/client.cpp src/server.cpp src/debug.cpp
+SOURCES		= main.cpp src/client.cpp src/server.cpp src/debug.cpp src/utils.cpp
 OBJECTS		= $(SOURCES:%.cpp=$(OBJDIR)/%.o)
 
 INCLUDES	= -I.
