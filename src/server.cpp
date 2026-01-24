@@ -1,4 +1,5 @@
 #include "../inc/server.hpp"
+#include "server.hpp"
 
 Server::Server() : _port(0), _password("") {}
 
@@ -38,21 +39,47 @@ void Server::start_sockaddr_struct()
     std::cout << "=========================================" << std::endl;
 }
 
-void  Server::init() 
+void Server::socket_initialization()
 {
-    // Socket initialization
     _server_fd = socket(AF_INET, SOCK_STREAM, 0); // TCP socket
     if (_server_fd < 0) {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
-    start_sockaddr_struct(); // Initialize sockaddr_in structure
+}
+
+void Server::socket_configuration() 
+{
+    int opt = 1;
+    if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("setsockopt failed");
+        close(_server_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) < 0) {
+        perror("fcntl failed");
+        close(_server_fd);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void  Server::server_bind()
+{
     bindValue = bind(_server_fd, (struct sockaddr*)&_serverAddr, sizeof(_serverAddr));
     if (bindValue < 0) {
         perror("Bind failed");
         close(_server_fd);
         exit(EXIT_FAILURE);
     }
-    
+}
+
+
+void  Server::init() 
+{
+    socket_initialization();
+    socket_configuration(); // setsocketopt (bind fail önlemek için ve fcntl ile non-blocking)
+    start_sockaddr_struct(); // Initialize sockaddr_in structure
+    server_bind();
     std::cout << "Server socket created, fd = " << _server_fd << std::endl;  
 }

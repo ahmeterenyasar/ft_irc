@@ -2,7 +2,10 @@
 
 
 
-
+# Missing
+- #DONE setsocketopt before bind
+- #DONE fcntl for non-blocking
+- listen () after bind & poll()
 
 
 

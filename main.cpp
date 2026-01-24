@@ -35,6 +35,8 @@ int main(int argc, char **argv)
 
         Server server(port, password);
         server.init();
+        // server.run(); -> poll loop to be implemented
+
     }   
     catch(const std::exception& e)
     {

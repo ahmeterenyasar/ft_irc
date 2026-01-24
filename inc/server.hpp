@@ -12,6 +12,9 @@
 #include <poll.h>	// poll için
 #include <fcntl.h> // fcntl için 
 #include <cerrno> // errno için
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
 
 class Server
 {
@@ -32,7 +35,10 @@ class Server
 
 		void init(); // Sunucuyu başlatmak için
 		void start_sockaddr_struct(); // sockaddr_in yapısını başlatmak için
-		void run();
+        void socket_initialization();
+        void socket_configuration();
+        void server_bind();
+        void run();
 };
 
 // debug fonksiyonu
