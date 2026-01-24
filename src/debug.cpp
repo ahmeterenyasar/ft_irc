@@ -1,6 +1,5 @@
 #include "../inc/server.hpp"
 
-
 std::string familyToString(int family) {
     switch (family) {
         case AF_INET:

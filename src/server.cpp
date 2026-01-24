@@ -111,8 +111,6 @@ void Server::init_run()
     std::cout << "=====================================\n\n";
 }
 
-/*
-*/
 void Server::sendSimpleWelcome(int clientFd)
 {
     std::string welcomeMsg;
@@ -129,7 +127,6 @@ void Server::sendSimpleWelcome(int clientFd)
         std::cerr << "Error: Mesaj gonderilemedi." << std::endl;
     }
 }
-/**/
 
 void Server::accept_new_connection() 
 {
@@ -148,28 +145,38 @@ void Server::accept_new_connection()
         int flags = fcntl(client_fd, F_GETFL, 0);  // Mevcut bayrakları al
         if (flags != -1) 
             fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
-        pollfd p; 
-        p.fd = client_fd;
-        p.events = POLLIN;
-        p.revents = 0;
-        _pollFds.push_back(p);
+        pollfd p; // Yeni pollfd yapısı
+        p.fd = client_fd; // Yeni istemci soket dosya tanıtıcısı
+        p.events = POLLIN; // Gelen veriler için dinle
+        p.revents = 0; // Başlangıçta olay yok
+        _pollFds.push_back(p); // Yeni istemci soketini pollFds vektörüne ekle
+        _clients[client_fd] = Client(client_fd); // Yeni Client nesnesi oluştur ve ekle
 
+        std::cout << "\n========== CLIENT ACCEPT DEBUG ==========\n";
+        std::cout << "New client accepted\n";
+        std::cout << "FD           : " << client_fd << "\n";
+        std::cout << "IP           : " << inet_ntoa(client_address.sin_addr) << "\n";
+        std::cout << "Port         : " << ntohs(client_address.sin_port) << "\n";
 
-        std::cout << "[DEBUG] New client accepted fd=" << client_fd
-                  << " ip=" << inet_ntoa(client_address.sin_addr)
-                  << " port=" << ntohs(client_address.sin_port) << "\n";
+        std::cout << "Client exists in map : "
+                  << (_clients.find(client_fd) != _clients.end() ? "YES" : "NO")
+                  << "\n";
+
+        std::cout << "Total pollfds        : " << _pollFds.size() << "\n";
+        std::cout << "Total clients        : " << _clients.size() << "\n";
+        std::cout << "=========================================\n";
     }
-    sendSimpleWelcome(_pollFds.back().fd);
+    sendSimpleWelcome(_pollFds.back().fd); // Yeni bağlanan istemciye hoş geldin mesajı gönder
 }
 
 void Server::disconnectClient(size_t index) 
 {
-    if (index >= _pollFds.size())
+    if (index >= _pollFds.size())// geçersiz indeks
         return;
-    int client_fd = _pollFds[index].fd;
-    close(client_fd);
-    _pollFds.erase(_pollFds.begin() + index);
-    _inbuf.erase(client_fd);
+    int client_fd = _pollFds[index].fd; // İstemci dosya tanıtıcısı
+    close(client_fd); // İstemci soketini kapat
+    _pollFds.erase(_pollFds.begin() + index); // pollFds vektöründen kaldır
+    _inbuf.erase(client_fd); // İstemci verilerini sil
     std::cout << "[DEBUG] Client disconnected fd=" << client_fd << "\n";
 }
 
@@ -202,7 +209,7 @@ void Server::client_read(size_t fd, size_t index)
             line.erase(line.size() - 1);
         buffer.erase(0, pos + 1);
         std::cout << "[IRC] fd=" << fd << " cmd=\"" << line << "\"\n";
-        // parse 
+        // parser ve komut işlemi burada yapılacak
     }
 }
 

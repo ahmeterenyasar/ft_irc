@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <map>
+#include "client.hpp"
 
 class Server
 {
@@ -26,6 +27,7 @@ class Server
 		struct sockaddr_in _serverAddr; // Sunucu adres bilgisi
 		std::vector<struct pollfd> _pollFds; // poll için kullanılan dosya tanıtıcıları
 		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
+		std::map<int, Client> _clients; // Bağlı istemciler
 
 	public:
 		Server();
@@ -45,7 +47,9 @@ class Server
 		void accept_new_connection(); // Yeni bağlantıları kabul etmek için
 		void disconnectClient(size_t index); // İstemci bağlantısını kesmek için
 		void client_read(size_t fd, size_t index); // İstemciden veri okumak için
-		void sendSimpleWelcome(int clientFd); // Basit bir hoş geldin mesajı göndermek için
+		void sendSimpleWelcome(int clientFd);
+        void passCommand(int fd, std::vector<std::string> params);
+        // Basit bir hoş geldin mesajı göndermek için
 };
 
 // debug fonksiyonu

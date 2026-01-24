@@ -23,11 +23,12 @@ private:
     std::map<std::string, bool> _operator_status;
 
 public:
+    Client();
     Client(int fd);
     ~Client();
 
     // Getters
-    int                 getFd(void) const;
+    int                 getClientFd(void) const;
     std::string         getNickname(void) const;
     std::string         getUsername(void) const;
     std::string         getRealname(void) const;
