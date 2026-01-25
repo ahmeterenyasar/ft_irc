@@ -32,7 +32,8 @@ class Server
 		std::vector<struct pollfd> _pollFds; // poll için kullanılan dosya tanıtıcıları
 		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
 		std::map<int, Client> _clients; // Bağlı istemciler
-		std::map<std::string, Channel> _channels; // Kanallar
+
+		std::map<std::string, Channel> _channels; // IRC kanalları
 
 	public:
 		Server();
@@ -79,6 +80,9 @@ class Server
 		// Commands Section - Messaging
 		void privmsgCommand(IRCMessage& msg);
 		void noticeCommand(IRCMessage& msg);
+
+		// User list for NAMES reply (placeholder - needs nick mapping)
+    	std::string getUserList(const Channel& channel) const;
 };
 
 // debug fonksiyonu

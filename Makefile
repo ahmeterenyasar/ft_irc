@@ -7,7 +7,8 @@ CXXFLAGS	= -Wall -Wextra -Werror -std=c++98
 SRCDIR		= .
 OBJDIR		= obj
 
-SOURCES		= main.cpp src/client.cpp src/server.cpp src/debug.cpp src/utils.cpp src/parser/parser.cpp \
+SOURCES		= main.cpp src/client.cpp src/server.cpp src/debug.cpp src/utils.cpp src/parser.cpp \
+			  src/channel/channel.cpp \
 			  src/command/pass.cpp src/command/nick.cpp src/command/user.cpp src/command/quit.cpp \
 			  src/command/kick.cpp src/command/invite.cpp src/command/topic.cpp src/command/mode.cpp \
 			  src/command/part.cpp src/command/commands.cpp src/command/join.cpp src/command/privmsg.cpp \

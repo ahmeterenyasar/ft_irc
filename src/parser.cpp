@@ -1,5 +1,5 @@
-#include "../../inc/server.hpp"
-#include "../../inc/client.hpp"
+#include "../inc/server.hpp"
+#include "../inc/client.hpp"
 
 IRCMessage::IRCMessage() : Prefix(""), Command(""), fd(0) {
 }

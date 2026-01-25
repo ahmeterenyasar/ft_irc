@@ -80,7 +80,6 @@ void Client::setOperator(const std::string& channel, bool status)
     _operator_status[channel] = status;
 }
 
-// Channel management
 void Client::joinChannel(const std::string& channel)
 {
     if (!isInChannel(channel))

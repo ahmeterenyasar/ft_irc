@@ -12,14 +12,12 @@ static bool isValidNickname(const std::string& nick)
     if (nick.empty() || nick.length() > 9)
         return false;
     
-    // First character must be a letter or special character
     char first = nick[0];
     if (!std::isalpha(first) && first != '[' && first != ']' && 
         first != '\\' && first != '`' && first != '_' && 
         first != '^' && first != '{' && first != '|' && first != '}')
         return false;
     
-    // Rest can be letters, digits, or special characters
     for (size_t i = 1; i < nick.length(); i++)
     {
         char c = nick[i];
@@ -43,7 +41,6 @@ void Server::nickCommand(IRCMessage& msg)
     std::string newNick = msg.Parameters[0];
     if (!isValidNickname(newNick))
     {
-        // Hata durumunda hedef '*' veya mevcut nick olmalı
         std::string target = cli.getNickname().empty() ? "*" : cli.getNickname();
         sendReply(msg.fd, ":server 432 " + target + " " + newNick + " :Erroneous nickname");
         return;

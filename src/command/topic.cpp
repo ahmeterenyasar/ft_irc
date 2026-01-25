@@ -17,5 +17,5 @@ void Server::topicCommand(IRCMessage& msg)
         sendReply(msg.fd, ":server 461 " + nick + " TOPIC :Not enough parameters");
         return;
     }
-
+    
 }

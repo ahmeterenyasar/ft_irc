@@ -1,6 +1,7 @@
 #include "../inc/server.hpp"
 #include "../inc/client.hpp"
 
+
 Server::Server() : _server_fd(-1), _port(0), _password("") {}
 
 Server::Server(int port, const std::string& password) : _server_fd(-1), _port(port), _password(password) {
@@ -83,7 +84,6 @@ void  Server::init()
     start_sockaddr_struct(); // Initialize sockaddr_in structure
     server_bind();
     server_listen();
-    std::cout << "Server socket created, fd = " << _server_fd << std::endl;  
 }
 
 void Server::init_run()
@@ -93,38 +93,19 @@ void Server::init_run()
     serverPollFd.events = POLLIN; // Gelen bağlantılar için dinle
     serverPollFd.revents = 0; // Başlangıçta olay yok
     _pollFds.push_back(serverPollFd); // Sunucu soketini pollFds vektörüne ekler
-
-      // ===== DEBUG OUTPUT =====
-    std::cout << "\n========== POLL INIT DEBUG ==========\n";
-    std::cout << "Added pollfd entry\n";
-    std::cout << "Index      : " << _pollFds.size() - 1 << "\n";
-    std::cout << "FD         : " << serverPollFd.fd << "\n";
-
-    std::cout << "Events     : ";
-    if (serverPollFd.events & POLLIN)  std::cout << "POLLIN ";
-    if (serverPollFd.events & POLLOUT) std::cout << "POLLOUT ";
-    if (serverPollFd.events & POLLERR) std::cout << "POLLERR ";
-    std::cout << "\n";
-
-    std::cout << "Revents    : " << serverPollFd.revents << "\n";
-    std::cout << "Total fds  : " << _pollFds.size() << "\n";
-    std::cout << "=====================================\n\n";
 }
 
 void Server::sendSimpleWelcome(int clientFd)
 {
+    // RFC 2812: Send NOTICE to unauthenticated clients
     std::string welcomeMsg;
+    
+    welcomeMsg = "NOTICE AUTH :*** Looking up your hostname...\r\n";
+    welcomeMsg += "NOTICE AUTH :*** Checking Ident\r\n";
+    welcomeMsg += "NOTICE AUTH :*** Please authenticate using PASS command\r\n";
 
-    welcomeMsg += "\r\n";
-    welcomeMsg += "  Hos geldin,-\r\n";
-    welcomeMsg += "--------------------------------------------\r\n";
-    welcomeMsg += "  PASS Komutu İle Giriş Yap:\r\n";
-    welcomeMsg += "--------------------------------------------\r\n";
-    welcomeMsg += "\r\n";
-
-    // Gönder gitsin
     if (send(clientFd, welcomeMsg.c_str(), welcomeMsg.length(), 0) == -1) {
-        std::cerr << "Error: Mesaj gonderilemedi." << std::endl;
+        std::cerr << "Error: Failed to send welcome message" << std::endl;
     }
 }
 
@@ -151,20 +132,6 @@ void Server::accept_new_connection()
         p.revents = 0; // Başlangıçta olay yok
         _pollFds.push_back(p); // Yeni istemci soketini pollFds vektörüne ekle
         _clients[client_fd] = Client(client_fd); // Yeni Client nesnesi oluştur ve ekle
-
-        std::cout << "\n========== CLIENT ACCEPT DEBUG ==========\n";
-        std::cout << "New client accepted\n";
-        std::cout << "FD           : " << client_fd << "\n";
-        std::cout << "IP           : " << inet_ntoa(client_address.sin_addr) << "\n";
-        std::cout << "Port         : " << ntohs(client_address.sin_port) << "\n";
-
-        std::cout << "Client exists in map : "
-                  << (_clients.find(client_fd) != _clients.end() ? "YES" : "NO")
-                  << "\n";
-
-        std::cout << "Total pollfds        : " << _pollFds.size() << "\n";
-        std::cout << "Total clients        : " << _clients.size() << "\n";
-        std::cout << "=========================================\n";
     }
     sendSimpleWelcome(_pollFds.back().fd); // Yeni bağlanan istemciye hoş geldin mesajı gönder
 }
@@ -177,7 +144,6 @@ void Server::disconnectClient(size_t index)
     close(client_fd); // İstemci soketini kapat
     _pollFds.erase(_pollFds.begin() + index); // pollFds vektöründen kaldır
     _inbuf.erase(client_fd); // İstemci verilerini sil
-    std::cout << "[DEBUG] Client disconnected fd=" << client_fd << "\n";
 }
 
 void Server::client_read(size_t fd, size_t index)
@@ -255,4 +221,29 @@ void Server::run()
             }
         }
     }
+}
+
+std::string Server::getUserList(const Channel& channel) const
+{
+    std::string userList;
+    std::vector<int> members = channel.getMembers();
+    
+    for (size_t i = 0; i < members.size(); ++i)
+    {
+        int fd = members[i];
+        std::map<int, Client>::const_iterator it = _clients.find(fd);
+        if (it == _clients.end())
+            continue; // FD bulunamazsa atla
+        
+        const Client& cli = it->second;
+        std::string nick = cli.getNickname();
+        
+        if (cli.isOperator(channel.getName()))
+            userList += "@";
+        
+        userList += nick;
+        if (i < members.size() - 1)
+            userList += " ";
+    }
+    return userList;
 }
