@@ -70,6 +70,15 @@ void Server::joinCommand(IRCMessage& msg)
             sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
             continue;
         }
+        else if ()
+        {
+            /* kanal varsa*/
+        }
+        else 
+        {
+            /* kanal yoksa */
+        }
+        
     }
     
     
