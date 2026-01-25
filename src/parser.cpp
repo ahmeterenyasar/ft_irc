@@ -80,15 +80,5 @@ IRCMessage parser(std::string line, size_t fd)
         }
     }
 
-    // DEBUG
-    std::cout << "========== IRC MESSAGE DEBUG ==========" << std::endl;
-    std::cout << "FD: " << msg.fd << std::endl;
-    std::cout << "Prefix: [" << msg.Prefix << "]" << std::endl;
-    std::cout << "Command: [" << msg.Command << "]" << std::endl;
-    std::cout << "Parameters (" << msg.Parameters.size() << "):" << std::endl;
-    for (size_t i = 0; i < msg.Parameters.size(); i++)
-        std::cout << "  [" << i << "]: [" << msg.Parameters[i] << "]" << std::endl;
-    std::cout << "=======================================" << std::endl;
-
     return msg;
 }

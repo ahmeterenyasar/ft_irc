@@ -79,6 +79,7 @@ class Server
 		// Commands Section - Messaging
 		void privmsgCommand(IRCMessage& msg);
 		void noticeCommand(IRCMessage& msg);
+		bool haschannel(std::string name);
 
 		// User list for NAMES reply (placeholder - needs nick mapping)
     	std::string getUserList(const Channel& channel) const;
