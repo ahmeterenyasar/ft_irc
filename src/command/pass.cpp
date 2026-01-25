@@ -1,24 +1,37 @@
-#include "../inc/server.hpp"
-#include "../inc/client.hpp"
+#include "../../inc/server.hpp"
+#include "../../inc/client.hpp"
 
-void Server::passCommand(int fd, std::vector<std::string> params)
+// RFC 2812 - PASS command
+// Syntax: PASS <password>
+// Numeric replies: ERR_NEEDMOREPARAMS (461), ERR_ALREADYREGISTRED (462)
+void Server::passCommand(IRCMessage& msg)
 {
-    Client *cli = getClientFd(fd);
-    if (params.size() < 1)
+    Client& cli = _clients[msg.fd];
+    std::string userName;
+
+    if (cli.getUsername().empty())
+        userName = "*";
+    else
+        userName = cli.getUsername();
+
+    // ERR_NEEDMOREPARAMS (461)
+    if (msg.Parameters.empty())
     {
-        // ERR_NEEDMOREPARAMS
+        sendReply(msg.fd, ":server 461 " + userName + " PASS :Not enough parameters");
         return;
     }
-    if (cli->isRegistered())
+    // ERR_ALREADYREGISTRED (462)
+    if (cli.isRegistered() || cli.isAuthenticated() == true)
     {
-        // ERR_ALREADYREGISTERED
+        sendReply(msg.fd, ":server 462 " + userName + " :You may not reregister");
         return;
     }
-    if (params[0] != this->_password)
+    // ERR_PASSWDMISMATCH (464)
+    if (msg.Parameters[0] != this->_password)
     {
-        // ERR_PASSWDMISMATCH
-        cli->setAuthenticated(false);
+        sendReply(msg.fd, ":server 464 " + userName + " :Password incorrect");
+        cli.setAuthenticated(false);
         return;
     }
-    cli->setAuthenticated(true);
+    cli.setAuthenticated(true);
 }

@@ -29,7 +29,7 @@ public:
 
     // Getters
     int                 getClientFd(void) const;
-    std::string         getNickname(void) const;
+    std::string         getNickname(void) const; 
     std::string         getUsername(void) const;
     std::string         getRealname(void) const;
     std::string         getHostname(void) const;
@@ -40,7 +40,7 @@ public:
     bool                isOperator(const std::string& channel) const;
 
     // Setters
-    void                setNickname(const std::string& nickname);
+    void                setNickname(const std::string& getNickname);
     void                setUsername(const std::string& username);
     void                setRealname(const std::string& realname);
     void                setHostname(const std::string& hostname);

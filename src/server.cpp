@@ -209,7 +209,10 @@ void Server::client_read(size_t fd, size_t index)
             line.erase(line.size() - 1);
         buffer.erase(0, pos + 1);
         std::cout << "[IRC] fd=" << fd << " cmd=\"" << line << "\"\n";
-        // parser ve komut işlemi burada yapılacak
+        
+        // TEST
+        IRCMessage msg = parser(line, fd);
+        executeCommand(msg);
     }
 }
 

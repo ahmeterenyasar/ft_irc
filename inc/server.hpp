@@ -16,7 +16,11 @@
 #include <cstdlib>
 #include <cstdio>
 #include <map>
+#include <sstream>
+#include <cctype>
 #include "client.hpp"
+#include "IRCMessage.hpp"
+#include "channel.hpp"
 
 class Server
 {
@@ -28,6 +32,7 @@ class Server
 		std::vector<struct pollfd> _pollFds; // poll için kullanılan dosya tanıtıcıları
 		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
 		std::map<int, Client> _clients; // Bağlı istemciler
+		std::map<std::string, Channel> _channels; // Kanallar
 
 	public:
 		Server();
@@ -48,8 +53,32 @@ class Server
 		void disconnectClient(size_t index); // İstemci bağlantısını kesmek için
 		void client_read(size_t fd, size_t index); // İstemciden veri okumak için
 		void sendSimpleWelcome(int clientFd);
-        void passCommand(int fd, std::vector<std::string> params);
-        // Basit bir hoş geldin mesajı göndermek için
+		
+		// Commands Section - Utility
+		void sendReply(int fd, const std::string &reply);
+		void executeCommand(IRCMessage& msg);
+
+		// Commands Section - Connection Registration
+		void passCommand(IRCMessage& msg);
+		void nickCommand(IRCMessage& msg);
+		void cmdUser(IRCMessage& msg);
+		void quitCommand(IRCMessage& msg);
+
+		// Commands Section - Channel Operations
+		void joinCommand(IRCMessage& msg);
+		void partCommand(IRCMessage& msg);
+		void topicCommand(IRCMessage& msg);
+		void kickCommand(IRCMessage& msg);
+		void inviteCommand(IRCMessage& msg);
+
+		// Commands Section - Mode
+		void modeCommand(IRCMessage& msg);
+		void handleChannelMode(IRCMessage& msg, const std::string& nick, const std::string& channel);
+		void handleUserMode(IRCMessage& msg, const std::string& nick, const std::string& target);
+
+		// Commands Section - Messaging
+		void privmsgCommand(IRCMessage& msg);
+		void noticeCommand(IRCMessage& msg);
 };
 
 // debug fonksiyonu

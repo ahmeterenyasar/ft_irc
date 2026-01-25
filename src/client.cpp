@@ -1,8 +1,8 @@
 #include "../inc/server.hpp"
 #include "../inc/client.hpp"
 
-Client::Client(): _fd(-1), _nickname(""), _username(""), _realname(""), _hostname(""), _buffer(""), _authenticated(false), _registered(false) {}    
-Client::Client(int fd): _fd(fd), _nickname(""), _username(""), _realname(""), _hostname(""), _buffer(""), _authenticated(false), _registered(false) {}
+Client::Client(): _fd(-1), _nickname("") ,_username(""), _realname(""), _hostname(""), _buffer(""), _authenticated(false), _registered(false) {}    
+Client::Client(int fd): _fd(fd),_nickname(""), _username(""), _realname(""), _hostname(""), _buffer(""), _authenticated(false), _registered(false) {}
 Client::~Client() {} 
 
 
@@ -50,6 +50,7 @@ bool Client::isOperator(const std::string& channel) const
         return it->second;
     return false;
 }
+
 void Client::setNickname(const std::string& nickname)
 {
     _nickname = nickname;
@@ -77,4 +78,34 @@ void Client::setRegistered(bool status)
 void Client::setOperator(const std::string& channel, bool status)
 {
     _operator_status[channel] = status;
+}
+
+// Channel management
+void Client::joinChannel(const std::string& channel)
+{
+    if (!isInChannel(channel))
+        _channels.push_back(channel);
+}
+
+void Client::leaveChannel(const std::string& channel)
+{
+    for (std::vector<std::string>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+    {
+        if (*it == channel)
+        {
+            _channels.erase(it);
+            _operator_status.erase(channel);
+            return;
+        }
+    }
+}
+
+bool Client::isInChannel(const std::string& channel) const
+{
+    for (size_t i = 0; i < _channels.size(); i++)
+    {
+        if (_channels[i] == channel)
+            return true;
+    }
+    return false;
 }
