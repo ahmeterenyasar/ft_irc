@@ -226,12 +226,12 @@ void Server::run()
 std::string Server::getUserList(const Channel& channel) const
 {
     std::string userList;
-    std::vector<int> members = channel.getMembers();
+    std::vector<size_t> members = channel.getMembers();
     
     for (size_t i = 0; i < members.size(); ++i)
     {
-        int fd = members[i];
-        std::map<int, Client>::const_iterator it = _clients.find(fd);
+        size_t fd = members[i];
+        std::map<size_t, Client>::const_iterator it = _clients.find(fd);
         if (it == _clients.end())
             continue; // FD bulunamazsa atla
         

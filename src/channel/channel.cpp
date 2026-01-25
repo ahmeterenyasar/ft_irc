@@ -40,10 +40,16 @@ int Channel::getUserCount() const
     return _members.size();
 }
 
-std::vector<int> Channel::getMembers() const 
+std::vector<size_t> Channel::getMembers() const 
 { 
     return _members; 
 }
+
+std::vector<size_t> Channel::getOperators() const 
+{ 
+    return _operators; 
+}
+
 void Channel::setTopic(const std::string& topic) 
 {
      _topic = topic; 
@@ -65,20 +71,26 @@ void Channel::setUserLimit(int limit)
     _userLimit = limit; 
 }
 
-void Channel::addUser(int fd)
+void Channel::addUser(size_t fd)
 {
     if (std::find(_members.begin(), _members.end(), fd) == _members.end())
         _members.push_back(fd);
 }
 
-void Channel::removeUser(int fd)
+void Channel::addOperator(size_t fd)
 {
-    std::vector<int>::iterator it = std::find(_members.begin(), _members.end(), fd);
+    if (std::find(_operators.begin(), _operators.end(), fd) == _operators.end())
+        _operators.push_back(fd);
+}
+
+void Channel::removeUser(size_t fd)
+{
+    std::vector<size_t>::iterator it = std::find(_members.begin(), _members.end(), fd);
     if (it != _members.end())
         _members.erase(it);
 }
 
-bool Channel::hasUser(int fd) const
+bool Channel::hasUser(size_t fd) const
 {
     return std::find(_members.begin(), _members.end(), fd) != _members.end();
 }

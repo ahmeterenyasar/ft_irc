@@ -31,9 +31,8 @@ class Server
 		struct sockaddr_in _serverAddr; // Sunucu adres bilgisi
 		std::vector<struct pollfd> _pollFds; // poll için kullanılan dosya tanıtıcıları
 		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
-		std::map<int, Client> _clients; // Bağlı istemciler
-
-		std::map<std::string, Channel> _channels; // IRC kanalları
+		std::map<size_t, Client> _clients; // Bağlı istemciler
+		std::vector<Channel> _channels; // IRC kanalları
 
 	public:
 		Server();

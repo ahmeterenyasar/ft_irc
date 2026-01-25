@@ -45,7 +45,7 @@ void Server::nickCommand(IRCMessage& msg)
         sendReply(msg.fd, ":server 432 " + target + " " + newNick + " :Erroneous nickname");
         return;
     }
-    for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+    for (std::map<size_t, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
     {
         if (it->second.getNickname() == newNick)
         {
