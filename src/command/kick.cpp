@@ -22,6 +22,16 @@ void Server::kickCommand(IRCMessage& msg)
         sendReply(msg.fd, ":server 461 " + nick + " KICK :Not enough parameters");
         return;
     }
-
-
+    //Kayıt kontrolü
+    //Parametreleri al
+    //Kanal var mı kontrolü
+    //Kanalı bul ve referans al
+    //KICK eden kullanıcı kanalda mı kontrolü
+    //KICK eden kullanıcı operator mı kontrolü
+    //Atılacak kullanıcıyı bul
+    //Atılacak kullanıcı kanalda mı kontrolü
+    //KICK mesajını tüm kanal üyelerine broadcast et
+    //Kullanıcıyı kanaldan çıkar
+    //Eğer atılan kullanıcı operator idi, operator listesinden de çıkar
+    //Kanal boş kaldıysa kanalı sil (opsiyonel)
 }

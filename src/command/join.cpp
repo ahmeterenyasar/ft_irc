@@ -38,9 +38,13 @@ bool Server::haschannel(std::string name)
 void Server::joinCommand(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];
-    
-    std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-    
+    std::string nick;
+
+    if(cli.getNickname().empty())
+        nick = "*";
+    else
+        nick = cli.getNickname();
+
     if (!cli.isRegistered()) 
     {
         sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
@@ -52,10 +56,18 @@ void Server::joinCommand(IRCMessage& msg)
         sendReply(msg.fd, ":server 461 " + nick + " JOIN :Not enough parameters\r\n");
         return;
     }
-    
     ////BU EN SONRA YAPILACAK
     //// JOIN 0
     //// Kullanıcının üye olduğu tüm kanallardan çıkması
+    if (msg.Parameters[0] == "0")
+    {
+        std::vector<std::string> userChannels = cli.getChannels();
+        for (size_t i = 0; i < userChannels.size(); ++i)
+        {
+            //remove All channels user is in
+        }
+        return;
+    }
     std::vector<std::string> jchannels = split(msg.Parameters[0], ',');
     std::vector<std::string> keys;
     if (msg.Parameters.size() > 1)
@@ -70,13 +82,29 @@ void Server::joinCommand(IRCMessage& msg)
             sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
             continue;
         }
-        else if ()
+        else if (haschannel(channelName))
         {
             /* kanal varsa*/
+            // Kanalı bul
+            //kullanıcı kanalda mı 
+            // key şifre kontrolü 
+            //  Invetie only kontrolü
+            // user limit kontrolü
+            // kullanıcı kanala ekle
+            // kanalın üyelerine JOIN mesajı gönder
+            //Topic mesajı gönder
+            // isim listesi gönder
         }
         else 
         {
             /* kanal yoksa */
+            //yeni kanal oluştur
+            // ilk kullanıcıyı ekle ve operator yap
+            //kanalı sunucuya ekle
+            //Client a kanal bilgisini ekle
+            // JOIN mesajı gönder
+            //no topic mesahı 
+            // isim listesi sadece operator olan kullanıcı
         }
         
     }
