@@ -9,86 +9,92 @@
 void Server::topicCommand(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];
-    std::string nick = cli.getUsername().empty() ? "*" : cli.getUsername();
+    std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
-    // ERR_NEEDMOREPARAMS (461)
     if (msg.Parameters.empty())
     {
-        sendReply(msg.fd, ":server 461 " + nick + " TOPIC :Not enough parameters");
+        sendReply(msg.fd, ":server 461 " + nick + " TOPIC :Not enough parameters\r\n");
         return;
     }
+
+    if (!cli.isRegistered())
+    {
+        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
+        return;
+    }
+
+    std::string channelName = msg.Parameters[0];
+
+    if (!haschannel(channelName))
+    {
+        sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
+        return;
+    }
+
+    Channel* channel = NULL;
+    for (size_t i = 0; i < _channels.size(); ++i)
+    {
+        if (_channels[i].getName() == channelName)
+        {
+            channel = &_channels[i];
+            break;
+        }
+    }
+
+    if (channel == NULL)
+        return;
+
+    if (!channel->hasUser(msg.fd))
+    {
+        sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        return;
+    }
+
+    // TOPIC SORGULAMA
+    // Sadece topic sorgusu mu?
+    if (msg.Parameters.size() == 1)
+    {
+        // Topic boş mu?
+        if (channel->getTopic().empty())
+        {
+            // RPL_NOTOPIC (331)
+            sendReply(msg.fd, ":server 331 " + nick + " " + channelName + " :No topic is set\r\n");
+        }
+        else
+        {
+            // RPL_TOPIC (332)
+            sendReply(msg.fd, ":server 332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
+        }
+        return;
+    }
+
+    // TOPIC DEĞİŞTİRME
+    // Yeni topic'i al
+    std::string newTopic = msg.Parameters[1];
+
+    // Topic restriction kontrolü (+t modu)
+    if (channel->isTopicRestricted())
+    {
+        // Sadece operator değiştirebilir
+        if (!channel->isOperator(msg.fd))
+        {
+            // ERR_CHANOPRIVSNEEDED (482)
+            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+            return;
+        }
+    }
+    // +t modu yoksa kanalda olan herkes topic değiştirebilir
+
+    // Topic'i değiştir
+    channel->setTopic(newTopic);
+
+    // TOPIC değişikliğini tüm kanal üyelerine broadcast et (değiştiren dahil!)
+    std::string topicMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() +
+                           " TOPIC " + channelName + " :" + newTopic + "\r\n";
     
+    std::vector<size_t> members = channel->getMembers();
+    for (size_t i = 0; i < members.size(); ++i)
+    {
+        sendReply(members[i], topicMsg);
+    }
 }
-
-// TOPIC İKİ MODDA ÇALIŞIR:
-// 1. TOPIC SORGULAMA: TOPIC #kanal
-// 2. TOPIC DEĞİŞTİRME: TOPIC #kanal :Yeni topic
-
-// ============= ANA KONTROLLER =============
-
-// 1. Parametre kontrolü - ZATEN VAR
-//    - msg.Parameters.empty() ise ERR_NEEDMOREPARAMS (461)
-//    - Format: TOPIC <channel> [<topic>]
-
-// 2. Kayıt kontrolü
-//    - cli.isRegistered() false ise ERR_NOTREGISTERED (451)
-
-// 3. Parametreleri al
-//    - channelName = msg.Parameters[0]
-
-// 4. Kanal var mı kontrolü
-//    - haschannel(channelName) false ise ERR_NOSUCHCHANNEL (403)
-
-// 5. Kanalı bul ve referans al
-//    - _channels vektöründe channelName'i ara
-//    - Channel& channel = _channels[index]
-
-// 6. Kullanıcı kanalda mı kontrolü
-//    - channel.hasUser(msg.fd) false ise ERR_NOTONCHANNEL (442)
-
-// ============= TOPIC SORGULAMA (parametre yok) =============
-
-// 7. Sadece topic sorgusu mu? (msg.Parameters.size() == 1)
-//    - Eğer evet:
-//      a) Topic boş mu kontrol et
-//         - channel.getTopic().empty() ise
-//         - RPL_NOTOPIC (331) gönder
-//         - Format: ":server 331 <nick> <channel> :No topic is set\r\n"
-//      b) Topic varsa
-//         - RPL_TOPIC (332) gönder
-//         - Format: ":server 332 <nick> <channel> :<topic>\r\n"
-//    - return
-
-// ============= TOPIC DEĞİŞTİRME (yeni topic var) =============
-
-// 8. Yeni topic'i al
-//    - newTopic = msg.Parameters[1]
-//    - Boş string olabilir (topic silme)
-
-// 9. Topic restriction kontrolü (+t modu)
-//    - channel.isTopicRestricted() true ise
-//      a) Sadece operator değiştirebilir
-//         - channel.isOperator(msg.fd) false ise
-//         - ERR_CHANOPRIVSNEEDED (482) gönder
-//         - Format: ":server 482 <nick> <channel> :You're not channel operator\r\n"
-//         - return
-//    - channel.isTopicRestricted() false ise
-//      a) Kanalda olan herkes topic değiştirebilir
-
-// 10. Topic'i değiştir
-//     - channel.setTopic(newTopic)
-
-// 11. TOPIC değişikliğini tüm kanal üyelerine broadcast et
-//     - Format: ":<nick>!<user>@<host> TOPIC <channel> :<newTopic>\r\n"
-//     - channel.getMembers() ile tüm üyelere gönder (değiştiren dahil!)
-
-// ============= ÖRNEKLER =============
-// TOPIC #kanal                    → Topic'i sorgula
-// TOPIC #kanal :Yeni konu         → Topic'i değiştir
-// TOPIC #kanal :                  → Topic'i sil (boş topic)
-
-// ============= ÖZEL DURUMLAR =============
-// - +t modu aktifse sadece operator topic değiştirebilir
-// - +t modu yoksa herkes değiştirebilir
-// - Topic boş string olabilir (topic yok)
-// - Kaydolmamış kullanıcı TOPIC kullanamaz

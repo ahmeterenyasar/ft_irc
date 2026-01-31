@@ -13,17 +13,24 @@
 - Handle SIGINT and SIGQUIT signals
 
 
+# commands
+PRIVMSG, MODE
+KICK, INVITE (kontrol), TOPIC
+
+
 ## Needs Impelementation
-- invite.cpp
-- join.cpp 
 - kick.cpp 
 - mode.cpp 
-- privmsg.cpp 
-- notice.cpp 
-- part.cpp 
-- topic.cpp 
+- notice.cpp -> yazmıyomuşuz aakyuz öyle dediiii 
+
+quit'ten sonra command entry broken pipe veriyor nc kaynaklı olabilir
 
 ## Implemented
+- topic.cpp 
+- privmsg.cpp 
+- invite.cpp
+- join.cpp
+- part.cpp
 - nick.cpp 
 - pass.cpp 
 - quit.cpp 
