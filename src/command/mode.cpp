@@ -11,96 +11,201 @@
 void Server::modeCommand(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];
-    std::string nick = cli.getUsername().empty() ? "*" : cli.getUsername();
-
+    std::string nick;
+    if (cli.getNickname().empty())
+        nick = "*";
+    else
+        nick = cli.getNickname();
     if (msg.Parameters.empty())
     {
-        sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters");
+        sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
         return;
     }
-//Kayıt kontrolü
-// Target'ı belirle (kanal mı, kullanıcı modu mu?)
-//Sadece MODE sorgusu mu? (modestring yok)
-//Kanal var mı kontrolü
-// Kanalı bul ve referans al
-//MODE değiştiren kullanıcı kanalda mı?
-//MODE değiştiren kullanıcı operator mı?
-//Mode string'i parse et
-//Her mod karakterini işle
-//    /     - bool adding = true (+ modundayız)
-//     - bool removing = false (- modundayız)
-//     - Her karakter için:
-//       - '+' görürsen → adding = true, removing = false
-//       - '-' görürsen → adding = false, removing = true
-//       - 'i' görürsen → invite-only modu
-//       - 't' görürsen → topic restriction modu
-//       - 'k' görürsen → key (şifre) modu
-//       - 'o' görürsen → operator verme/alma
-//       - 'l' görürsen → user limit modu
-    // ============= MOD DETAYLARI =============
+    if(cli.isRegistered() == false)
+    {
+        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
+        return;
+    } 
 
-// MODE +i (invite-only)
-//    - channel.setInviteOnly(true)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> +i\r\n"
+    std::string target = msg.Parameters[0];
+    if (target.empty() || (target[0] != '#' && target[0] != '&'))
+    {
+        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
+        return;
+    }
+    if (!haschannel(target))
+    {
+        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
+        return;
+    }
 
-// MODE -i (invite-only kaldır)
-//    - channel.setInviteOnly(false)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> -i\r\n"
-
-// MODE +t (topic restriction)
-//    - channel.setTopicRestricted(true)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> +t\r\n"
-
-// MODE -t (topic restriction kaldır)
-//    - channel.setTopicRestricted(false)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> -t\r\n"
-
-// MODE +k <key> (şifre koy)
-//    - Parametre kontrolü: msg.Parameters.size() > paramIndex
-//    - key = msg.Parameters[paramIndex++]
-//    - channel.setKey(key)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> +k <key>\r\n"
-
-// MODE -k (şifreyi kaldır)
-//    - channel.setKey("")
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> -k\r\n"
-
-// MODE +o <nick> (operator ver)
-//    - Parametre kontrolü: msg.Parameters.size() > paramIndex
-//    - targetNick = msg.Parameters[paramIndex++]
-//    - Hedef kullanıcıyı bul (ERR_NOSUCHNICK 401)
-//    - Hedef kullanıcı kanalda mı kontrol et (ERR_USERNOTINCHANNEL 441)
-//    - channel.addOperator(targetFd)
-//    - targetClient.setOperator(channelName, true)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> +o <targetNick>\r\n"
-
-// MODE -o <nick> (operator al)
-//    - Parametre kontrolü: msg.Parameters.size() > paramIndex
-//    - targetNick = msg.Parameters[paramIndex++]
-//    - Hedef kullanıcıyı bul (ERR_NOSUCHNICK 401)
-//    - Hedef kullanıcı kanalda mı kontrol et (ERR_USERNOTINCHANNEL 441)
-//    - channel'dan operator'u çıkar (removeOperator metodu gerekebilir)
-//    - targetClient.setOperator(channelName, false)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> -o <targetNick>\r\n"
-
-// MODE +l <limit> (user limit koy)
-//    - Parametre kontrolü: msg.Parameters.size() > paramIndex
-//    - limit = atoi(msg.Parameters[paramIndex++])
-//    - limit > 0 kontrolü
-//    - channel.setUserLimit(limit)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> +l <limit>\r\n"
-
-// MODE -l (user limit kaldır)
-//    - channel.setUserLimit(0) veya channel.setUserLimit(-1)
-//    - Broadcast: ":<nick>!<user>@<host> MODE <channel> -l\r\n"
-
-// Bilinmeyen mod karakteri
-//    - ERR_UNKNOWNMODE (472)
-//    - Format: ":server 472 <nick> <char> :is unknown mode char to me\r\n"
-
-// ============= ÖZEL DURUMLAR =============
-// - Birden fazla mod tek komutta işlenebilir: MODE #kanal +ik-t key123
-// - Parametreler sırayla işlenir (k için key, o için nick, l için limit)
-// - Broadcast mesajları tüm kanal üyelerine gönderilir
-// - MODE değişikliği yapan kullanıcı dahil
+    Channel* channel = NULL;
+    for (size_t i = 0; i < _channels.size(); ++i)
+    {
+        if (_channels[i].getName() == target)
+        {
+            channel = &_channels[i];
+            break;
+        }
+    }
+    if (channel == NULL)
+    {
+        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
+        return;
+    }
+    if (!channel->hasUser(msg.fd))
+    {
+        sendReply(msg.fd, ":server 442 " + nick + " " + target + " :You're not on that channel\r\n");
+        return;
+    }
+    if (msg.Parameters.size() == 1)
+    {
+        sendReply(msg.fd, ":server 324 " + nick + " " + target + " " + channel->getModeString() + "\r\n");
+        return;
+    }
+    if (!channel->isOperator(msg.fd))
+    {
+        sendReply(msg.fd, ":server 482 " + nick + " " + target + " :You're not channel operator\r\n");
+        return;
+    }
+    std::string modeString = msg.Parameters[1];
+    bool adding = true;
+    size_t paramIndex = 2;
+    std::string prefix = ":" + nick + "!~" + cli.getUsername() + "@localhost";
+    for (size_t i = 0; i < modeString.size(); i++)
+    {
+        char mode = modeString[i];
+        if (mode == '+')
+            adding = true;
+        else if (mode == '-')
+            adding = false;
+        else if (mode == 'i')
+        {
+            channel->setInviteOnly(adding);
+            std::string modeChange = prefix + " MODE " + target + " ";
+            if (adding)
+                modeChange += "+i\r\n";
+            else
+                modeChange += "-i\r\n";
+            std::vector<size_t> members = channel->getMembers();
+            for (size_t j = 0; j < members.size(); j++)
+                sendReply(members[j], modeChange);
+        }
+        else if (mode == 't')
+        {
+            channel->setTopicRestricted(adding);
+            std::string modeChange = prefix + " MODE " + target + " ";
+            if (adding)
+                modeChange += "+t\r\n";
+            else
+                modeChange += "-t\r\n";
+            std::vector<size_t> members = channel->getMembers();
+            for (size_t j = 0; j < members.size(); j++)
+                sendReply(members[j], modeChange);
+        }
+        else if (mode == 'k')
+        {
+            if (adding)
+            {
+                if (msg.Parameters.size() <= paramIndex)
+                {
+                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
+                    continue;
+                }
+                std::string key = msg.Parameters[paramIndex++];
+                channel->setKey(key);
+                std::string modeChange = prefix + " MODE " + target + " +k " + key + "\r\n";
+                std::vector<size_t> members = channel->getMembers();
+                for (size_t j = 0; j < members.size(); j++)
+                    sendReply(members[j], modeChange);
+            }
+            else
+            {
+                channel->setKey("");
+                std::string modeChange = prefix + " MODE " + target + " -k\r\n";
+                std::vector<size_t> members = channel->getMembers();
+                for (size_t j = 0; j < members.size(); j++)
+                    sendReply(members[j], modeChange);
+            }
+        }
+        else if (mode == 'o')
+        {
+            if (msg.Parameters.size() <= paramIndex)
+            {
+                sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
+                continue;
+            }
+            std::string targetNick = msg.Parameters[paramIndex++];
+            int targetFd = -1;
+            for (std::map<size_t, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+            {
+                if (it->second.getNickname() == targetNick)
+                {
+                    targetFd = it->first;
+                    break;
+                }
+            }
+            if (targetFd == -1)
+            {
+                sendReply(msg.fd, ":server 401 " + nick + " " + targetNick + " :No such nick/channel\r\n");
+                continue;
+            }
+            if (!channel->hasUser((size_t)targetFd))
+            {
+                sendReply(msg.fd, ":server 441 " + nick + " " + targetNick + " " + target + " :They aren't on that channel\r\n");
+                continue;
+            }
+            Client& targetClient = _clients[(size_t)targetFd];
+            if (adding)
+            {
+                channel->addOperator((size_t)targetFd);
+                targetClient.setOperator(target, true);
+                std::string modeChange = prefix + " MODE " + target + " +o " + targetNick + "\r\n";
+                std::vector<size_t> members = channel->getMembers();
+                for (size_t j = 0; j < members.size(); j++)
+                    sendReply(members[j], modeChange);
+            }
+            else
+            {
+                channel->removeOperator((size_t)targetFd);
+                targetClient.setOperator(target, false);
+                std::string modeChange = prefix + " MODE " + target + " -o " + targetNick + "\r\n";
+                std::vector<size_t> members = channel->getMembers();
+                for (size_t j = 0; j < members.size(); j++)
+                    sendReply(members[j], modeChange);
+            }
+        }
+        else if (mode == 'l')
+        {
+            if (adding)
+            {
+                if (msg.Parameters.size() <= paramIndex)
+                {
+                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
+                    continue;
+                }
+                int limit = atoi(msg.Parameters[paramIndex++].c_str());
+                if (limit <= 0)
+                {
+                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Invalid limit parameter\r\n");
+                    continue;
+                }
+                channel->setUserLimit(limit);
+                std::string modeChange = prefix + " MODE " + target + " +l " + msg.Parameters[paramIndex - 1] + "\r\n";
+                std::vector<size_t> members = channel->getMembers();
+                for (size_t j = 0; j < members.size(); j++)
+                    sendReply(members[j], modeChange);
+            }
+            else
+            {
+                channel->setUserLimit(0);
+                std::string modeChange = prefix + " MODE " + target + " -l\r\n";
+                std::vector<size_t> members = channel->getMembers();
+                for (size_t j = 0; j < members.size(); j++)
+                    sendReply(members[j], modeChange);
+            }
+        }
+        else
+            sendReply(msg.fd, ":server 472 " + nick + " " + std::string(1, mode) + " :is unknown mode char to me\r\n");
+    }
 }

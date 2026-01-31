@@ -47,6 +47,7 @@ public:
     void addOperator(size_t fd); // Placeholder for adding operator
     void addUser(size_t fd);
     void removeUser(size_t fd);
+    void removeOperator(size_t fd);
     bool hasUser(size_t fd) const;
     
     // Invite management

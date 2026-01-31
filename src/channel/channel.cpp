@@ -132,3 +132,9 @@ std::string Channel::getModeString() const // modları string olarak döndüren 
     return modes;
 }
 
+void Channel::removeOperator(size_t fd)
+{
+    std::vector<size_t>::iterator it = std::find(_operators.begin(), _operators.end(), fd);
+    if (it != _operators.end())
+        _operators.erase(it);
+}
