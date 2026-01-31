@@ -113,6 +113,11 @@ bool Channel::isInvited(const std::string& nick) const
     return std::find(_inviteList.begin(), _inviteList.end(), nick) != _inviteList.end();
 }
 
+bool Channel::isOperator(size_t fd) const
+{
+    return std::find(_operators.begin(), _operators.end(), fd) != _operators.end();
+}
+
 std::string Channel::getModeString() const // modları string olarak döndüren fonksiyon
 {
     std::string modes = "+";
