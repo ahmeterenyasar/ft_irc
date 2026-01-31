@@ -58,6 +58,9 @@ public:
     void                joinChannel(const std::string& channel);
     void                leaveChannel(const std::string& channel);
     bool                isInChannel(const std::string& channel) const;
+
+
 };
+std::vector<std::string> split(const std::string& str, char delimiter);
 
 #endif

@@ -41,3 +41,9 @@
 *.dwo
 
 *.json
+
+# executable
+*.exe
+*.out
+*.app
+ircserv

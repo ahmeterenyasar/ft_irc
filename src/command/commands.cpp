@@ -11,6 +11,10 @@ void Server::executeCommand(IRCMessage& msg)
 {
     std::string cmd = msg.Command;
     
+    // Boş komut kontrolü - boş satırları yoksay
+    if (cmd.empty())
+        return;
+    
     // Convert command to uppercase for comparison
     for (size_t i = 0; i < cmd.length(); i++)
         cmd[i] = std::toupper(cmd[i]);
@@ -43,7 +47,7 @@ void Server::executeCommand(IRCMessage& msg)
     {
         // ERR_UNKNOWNCOMMAND (421)
         Client& cli = _clients[msg.fd];
-        std::string nick = cli.getUsername().empty() ? "*" : cli.getUsername();
+        std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
         sendReply(msg.fd, ":server 421 " + nick + " " + msg.Command + " :Unknown command");
     }
 }

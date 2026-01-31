@@ -1,6 +1,8 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
 
+
+
 // RFC 2812 - PART command
 // Syntax: PART <channel>{,<channel>} [<part message>]
 // Numeric replies: ERR_NEEDMOREPARAMS (461), ERR_NOSUCHCHANNEL (403),
@@ -8,14 +10,98 @@
 void Server::partCommand(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];
-    std::string nick = cli.getUsername().empty() ? "*" : cli.getUsername();
+    std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
     if (msg.Parameters.empty())
     {
         sendReply(msg.fd, ":server 461 " + nick + " PART :Not enough parameters");
         return;
     }
-
+    
+    if (cli.isRegistered() == false)
+    {
+        sendReply(msg.fd, ":server 451 " + nick + " PART :You have not registered");
+        return;
+    }
+    
+    std::vector<std::string> channels = split(msg.Parameters[0], ',');
+    std::string partMessage = "";
+    if (msg.Parameters.size() > 1)
+    {
+        partMessage = msg.Parameters[1];
+    }
+    
+    for (size_t i = 0; i < channels.size(); ++i)
+    {
+        std::string channelName = channels[i];
+        
+        // Kanal adı validasyonu
+        if (channelName.empty() || channelName[0] != '#')
+        {
+            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
+            continue;
+        }
+        
+        // Kanal var mı kontrolü
+        if (!haschannel(channelName))
+        {
+            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
+            continue;
+        }
+        
+        // Kanalı bul
+        Channel* channel = NULL;
+        for (size_t j = 0; j < _channels.size(); ++j)
+        {
+            if (_channels[j].getName() == channelName)
+            {
+                channel = &_channels[j];
+                break;
+            }
+        }
+        
+        if (channel == NULL)
+            continue;
+        
+        // Kullanıcı bu kanalda mı kontrolü
+        if (!channel->hasUser(msg.fd))
+        {
+            sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel");
+            continue;
+        }
+        
+        // Üyeleri önce al (kanaldan çıkmadan önce)
+        std::vector<size_t> members = channel->getMembers();
+        
+        // PART mesajını tüm kanal üyelerine broadcast et
+        std::string partMsg;
+        if (!partMessage.empty())
+            partMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() + " PART " + channelName + " :" + partMessage + "\r\n";
+        else
+            partMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() + " PART " + channelName + "\r\n";
+        
+        for (size_t m = 0; m < members.size(); ++m)
+        {
+            send(members[m], partMsg.c_str(), partMsg.length(), 0);
+        }
+        
+        // Kullanıcıyı kanaldan çıkar
+        channel->removeUser(msg.fd);
+        cli.leaveChannel(channelName);
+        
+        // Kanal boş kaldıysa kanalı sil
+        if (channel->getUserCount() == 0)
+        {
+            for (size_t k = 0; k < _channels.size(); ++k)
+            {
+                if (_channels[k].getName() == channelName)
+                {
+                    _channels.erase(_channels.begin() + k);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 // ============= ANA KONTROLLER =============

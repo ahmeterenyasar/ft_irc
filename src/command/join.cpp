@@ -59,15 +59,18 @@ void Server::joinCommand(IRCMessage& msg)
     ////BU EN SONRA YAPILACAK
     //// JOIN 0
     //// Kullanıcının üye olduğu tüm kanallardan çıkması
+
+
     if (msg.Parameters[0] == "0")
     {
         std::vector<std::string> userChannels = cli.getChannels();
         for (size_t i = 0; i < userChannels.size(); ++i)
         {
-            //remove All channels user is in
+            //partCommand çağrısı yap
         }
         return;
     }
+    
     std::vector<std::string> jchannels = split(msg.Parameters[0], ',');
     std::vector<std::string> keys;
     if (msg.Parameters.size() > 1)
