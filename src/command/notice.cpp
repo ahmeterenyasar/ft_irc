@@ -1,73 +1,82 @@
-#include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/server.hpp"
 
 // RFC 2812 - NOTICE command
 // Syntax: NOTICE <target>{,<target>} :<message>
 // NOTICE is similar to PRIVMSG but MUST NOT generate automatic replies
 // No numeric replies are sent for NOTICE command errors
-void Server::noticeCommand(IRCMessage& msg)
+void Server::noticeCommand(IRCMessage &msg)
 {
-    Client& cli = _clients[msg.fd];
-    std::string nick = cli.getUsername().empty() ? "*" : cli.getUsername();
+	Channel	*channel;
+	size_t	targetFd;
+	bool	userFound;
 
-    // NOTICE should not generate error replies, so we silently ignore errors
-    if (msg.Parameters.empty() || msg.Parameters.size() < 2)
-        return;
+	Client &cli = _clients[msg.fd];
+	std::string nick;
+	if (cli.getNickname().empty())
+		nick = "*";
+	else
+		nick = cli.getNickname();
+	if (msg.Parameters.empty() || msg.Parameters.size() < 2)
+		return ;
+	if (!cli.isRegistered())
+		return ;
+
+	std::string targets = msg.Parameters[0];
+	std::string message = msg.Parameters[1];
+	std::vector<std::string> targetList = split(targets, ',');
+
+	for (size_t i = 0; i < targetList.size(); ++i)
+	{
+		std::string target = targetList[i];
+		if (target.empty())
+			continue ;
+		if (target[0] == '#')
+		{
+			if (!haschannel(target))
+				continue ;
+			channel = NULL;
+			for (size_t j = 0; j < _channels.size(); ++j)
+			{
+				if (_channels[j].getName() == target)
+				{
+					channel = &_channels[j];
+					break ;
+				}
+			}
+			if (channel == NULL)
+				continue ;
+			if (!channel->hasUser(msg.fd))
+				continue ;
+			std::string noticeMsg = ":" + nick + "!" + cli.getUsername() + "@"
+				+ cli.getHostname() + " NOTICE " + target + " :" + message
+				+ "\r\n";
+			std::vector<size_t> members = channel->getMembers();
+			for (size_t m = 0; m < members.size(); ++m)
+			{
+				if (members[m] != msg.fd)
+					send(members[m], noticeMsg.c_str(), noticeMsg.length(), 0);
+			}
+		}
+		else
+		{
+			targetFd = 0;
+			userFound = false;
+			std::map<size_t, Client>::iterator it;
+			for (it = _clients.begin(); it != _clients.end(); ++it)
+			{
+				if (it->second.getNickname() == target)
+				{
+					targetFd = it->first;
+					userFound = true;
+					break ;
+				}
+			}
+			if (!userFound)
+				continue ;
+
+			std::string noticeMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() + " NOTICE " + target + " :" + message + "\r\n";
+			send(targetFd, noticeMsg.c_str(), noticeMsg.length(), 0);
+		}
+	}
 }
-
-// ÖNEMLİ: NOTICE komutu ASLA hata mesajı döndürmez!
-// PRIVMSG ile neredeyse aynıdır ama sessizdir (no error replies)
-
-// ============= ANA FARK =============
-// - NOTICE otomatik cevap üretmez (botlar için önemli)
-// - Hiçbir hata mesajı gönderilmez (ERR_NOSUCHNICK, ERR_CANNOTSENDTOCHAN vb. YOK)
-// - Sessizce ignore edilir
-
-// ============= KONTROLLER (HATA VERİLMEZ!) =============
-
-// 1. Parametre kontrolü - ZATEN VAR (sessizce return)
-//    - msg.Parameters.empty() veya msg.Parameters.size() < 2
-//    - Hata mesajı gönderme, sadece return
-
-// 2. Kayıt kontrolü
-//    - cli.isRegistered() false ise
-//    - Hata mesajı gönderme, sadece return
-
-// 3. Parametreleri al
-//    - target = msg.Parameters[0]  (kullanıcı veya kanal)
-//    - message = msg.Parameters[1] (mesaj içeriği)
-
-// ============= KANAL'A NOTICE (target[0] == '#') =============
-
-// 4. Kanal var mı kontrolü
-//    - haschannel(target) false ise
-//    - Sessizce return (ERR_NOSUCHCHANNEL gönderme!)
-
-// 5. Kanalı bul ve referans al
-//    - _channels vektöründe target'ı ara
-//    - Channel& channel = _channels[index]
-
-// 6. Gönderen kanalda mı kontrolü (opsiyonel)
-//    - channel.hasUser(msg.fd) false ise
-//    - Sessizce return (ERR_NOTONCHANNEL gönderme!)
-
-// 7. NOTICE mesajını kanal üyelerine broadcast et
-//    - Format: ":<nick>!<user>@<host> NOTICE <channel> :<message>\r\n"
-//    - channel.getMembers() ile tüm üyelere gönder
-//    - NOT: Gönderen kullanıcıya gönderme (kendisine değil)
-
-// ============= KULLANICIYA NOTICE (target[0] != '#') =============
-
-// 8. Hedef kullanıcıyı bul
-//    - _clients map'inde target nick'ini ara
-//    - Bulunamazsa sessizce return (ERR_NOSUCHNICK gönderme!)
-
-// 9. NOTICE mesajını hedef kullanıcıya gönder
-//    - Format: ":<nick>!<user>@<host> NOTICE <targetNick> :<message>\r\n"
-//    - sendReply(targetFd, noticeMsg)
-
-// ============= ÖNEMLİ NOTLAR =============
-// - Hiçbir zaman hata mesajı gönderilmez
-// - Otomatik cevap (auto-reply) üretmez
-// - Botların birbirlerine sonsuz loop mesaj göndermesini engeller
-// - PRIVMSG ile aynı mantık ama sessiz

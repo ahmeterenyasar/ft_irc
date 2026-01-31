@@ -87,8 +87,6 @@ class Server
 
 // debug fonksiyonu
 std::string familyToString(int family);
-
 // utils fonk
 bool isValidPort(char *port_str);
-
 #endif

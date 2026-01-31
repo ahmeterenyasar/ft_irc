@@ -16,9 +16,5 @@ class IRCMessage
     std::vector<std::string> Parameters;  // Parameter list
     size_t fd;                     // File descriptor of the sender
 };
-
-
 IRCMessage parser(std::string line, size_t fd);
-
-// ahmed nabüyün la
 #endif
