@@ -66,7 +66,8 @@ void Server::joinCommand(IRCMessage& msg)
         std::vector<std::string> userChannels = cli.getChannels();
         for (size_t i = 0; i < userChannels.size(); ++i)
         {
-            //partCommand çağrısı yap
+            msg.Parameters[0] = userChannels[i];
+            partCommand(msg);
         }
         return;
     }
