@@ -69,8 +69,14 @@ void Server::topicCommand(IRCMessage& msg)
     }
 
     // TOPIC DEĞİŞTİRME
-    // Yeni topic'i al
-    std::string newTopic = msg.Parameters[1];
+    // Yeni topic'i al - TÜM kelimeleri birleştir (multi-word topic)
+    std::string newTopic;
+    for (size_t i = 1; i < msg.Parameters.size(); ++i)
+    {
+        if (i > 1)
+            newTopic += " ";
+        newTopic += msg.Parameters[i];
+    }
 
     // Topic restriction kontrolü (+t modu)
     if (channel->isTopicRestricted())
