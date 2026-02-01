@@ -15,6 +15,10 @@ void Server::executeCommand(IRCMessage& msg)
     if (cmd.empty())
         return;
     
+    // Client'ın hala bağlı olduğunu kontrol et (race condition koruması)
+    if (_clients.find(msg.fd) == _clients.end())
+        return;
+    
     // Convert command to uppercase for comparison
     for (size_t i = 0; i < cmd.length(); i++)
         cmd[i] = std::toupper(cmd[i]);

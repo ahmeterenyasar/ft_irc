@@ -71,15 +71,18 @@ void Server::quitCommand(IRCMessage& msg)
     {
         std::string channelName = channels[i];
         
-        // Kanalı bul
+        // Kanalı bul ve kullanıcıyı çıkar
         for (size_t j = 0; j < _channels.size(); ++j)
         {
             if (_channels[j].getName() == channelName)
             {
                 // Kullanıcıyı kanaldan çıkar
                 _channels[j].removeUser(msg.fd);
+                // Operator ise operator listesinden de çıkar
+                if (_channels[j].isOperator(msg.fd))
+                    _channels[j].removeOperator(msg.fd);
                 
-                // Kanal boş kaldıysa sil
+                // Kanal boş kaldıysa sil - DİKKAT: Iterator invalidation
                 if (_channels[j].getUserCount() == 0)
                 {
                     _channels.erase(_channels.begin() + j);

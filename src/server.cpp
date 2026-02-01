@@ -141,6 +141,37 @@ void Server::disconnectClient(size_t index)
     if (index >= _pollFds.size())// geçersiz indeks
         return;
     int client_fd = _pollFds[index].fd; // İstemci dosya tanıtıcısı
+    
+    // Client'ı _clients map'inden bul
+    std::map<size_t, Client>::iterator clientIt = _clients.find(client_fd);
+    if (clientIt != _clients.end())
+    {
+        // Kullanıcının tüm kanallardan çıkmasını sağla
+        std::vector<std::string> channels = clientIt->second.getChannels();
+        for (size_t i = 0; i < channels.size(); ++i)
+        {
+            for (size_t j = 0; j < _channels.size(); ++j)
+            {
+                if (_channels[j].getName() == channels[i])
+                {
+                    _channels[j].removeUser(client_fd);
+                    if (_channels[j].isOperator(client_fd))
+                        _channels[j].removeOperator(client_fd);
+                    
+                    // Boş kanalı sil
+                    if (_channels[j].getUserCount() == 0)
+                    {
+                        _channels.erase(_channels.begin() + j);
+                        break;
+                    }
+                    break;
+                }
+            }
+        }
+        // Client'ı sil
+        _clients.erase(clientIt);
+    }
+    
     close(client_fd); // İstemci soketini kapat
     _pollFds.erase(_pollFds.begin() + index); // pollFds vektöründen kaldır
     _inbuf.erase(client_fd); // İstemci verilerini sil
@@ -149,8 +180,9 @@ void Server::disconnectClient(size_t index)
 void Server::client_read(size_t fd, size_t index)
 {
     char buf[512];
+    std::memset(buf, 0, sizeof(buf));
 
-    ssize_t n = recv(fd, buf, sizeof(buf), 0);
+    ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0); // -1 for null terminator
     if (n == 0)
     {
         std::cout << "[DEBUG] Client closed connection fd=" << fd << "\n";
@@ -165,6 +197,15 @@ void Server::client_read(size_t fd, size_t index)
         disconnectClient(index);
         return;
     }
+    // Buffer overflow koruması - maksimum 4096 byte
+    if (_inbuf[fd].size() + n > 4096)
+    {
+        std::cout << "[WARNING] Buffer overflow detected for fd=" << fd << ", clearing buffer\n";
+        _inbuf[fd].clear();
+        sendReply(fd, "ERROR :Input buffer overflow\r\n");
+        return;
+    }
+    
     _inbuf[fd].append(buf, n);
     std::string &buffer = _inbuf[fd];
     size_t pos;

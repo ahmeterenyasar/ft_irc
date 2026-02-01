@@ -97,6 +97,13 @@ void Server::kickCommand(IRCMessage& msg)
                 break;
             }
         }
+        
+        // Kendini kicklemeye çalışıyor mu kontrol et (mantıksal hata)
+        if (targetFd == static_cast<int>(msg.fd))
+        {
+            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You cannot kick yourself\r\n");
+            continue;
+        }
 
         if (targetFd == -1)
         {
@@ -131,13 +138,19 @@ void Server::kickCommand(IRCMessage& msg)
         }
         
         // 14. Client'ın channel listesinden de çıkar
-        Client& targetClient = _clients[targetFd];
-        targetClient.leaveChannel(channelName);
+        // Client'ın hala bağlı olduğunu kontrol et (race condition)
+        std::map<size_t, Client>::iterator targetIt = _clients.find(targetFd);
+        if (targetIt != _clients.end())
+        {
+            targetIt->second.leaveChannel(channelName);
+        }
 
         // 15. Kanal boş kaldıysa kanalı sil
+        // DİKKAT: channel pointer bu noktadan sonra geçersiz olacak!
         if (channel->getMembers().empty())
         {
             _channels.erase(_channels.begin() + channelIndex);
+            // channel pointer artık kullanılmamalı!
         }
     }
 }

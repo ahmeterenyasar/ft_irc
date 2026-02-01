@@ -27,6 +27,13 @@ void Server::inviteCommand(IRCMessage& msg)
 
     std::string targetNick = msg.Parameters[0];
     std::string channelName = msg.Parameters[1];
+    
+    // Kendini invite etmeye çalışıyor mu?
+    if (targetNick == nick)
+    {
+        sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :Cannot invite yourself\r\n");
+        return;
+    }
 
     // 3. Hedef kullanıcıyı bul - ERR_NOSUCHNICK (401)
     int targetFd = -1;

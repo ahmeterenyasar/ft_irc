@@ -167,6 +167,14 @@ void Server::modeCommand(IRCMessage& msg)
             }
             else
             {
+                // Son operator'ı kaldırmaya çalışıyor mu kontrol et
+                std::vector<size_t> operators = channel->getOperators();
+                if (operators.size() == 1 && channel->isOperator((size_t)targetFd))
+                {
+                    sendReply(msg.fd, ":server 482 " + nick + " " + target + " :Cannot remove last operator\r\n");
+                    continue;
+                }
+                
                 channel->removeOperator((size_t)targetFd);
                 targetClient.setOperator(target, false);
                 std::string modeChange = prefix + " MODE " + target + " -o " + targetNick + "\r\n";
@@ -187,7 +195,13 @@ void Server::modeCommand(IRCMessage& msg)
                 int limit = atoi(msg.Parameters[paramIndex++].c_str());
                 if (limit <= 0)
                 {
-                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Invalid limit parameter\r\n");
+                    sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :Invalid user limit. Must be a positive integer\r\n");
+                    continue;
+                }
+                // Çok büyük limit kontrolü (max 1000)
+                if (limit > 1000)
+                {
+                    sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :User limit too large (max: 1000)\r\n");
                     continue;
                 }
                 channel->setUserLimit(limit);

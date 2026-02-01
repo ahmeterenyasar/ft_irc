@@ -87,6 +87,9 @@ void Server::partCommand(IRCMessage& msg)
         
         // Kullanıcıyı kanaldan çıkar
         channel->removeUser(msg.fd);
+        // Eğer operator ise operator listesinden de çıkar
+        if (channel->isOperator(msg.fd))
+            channel->removeOperator(msg.fd);
         cli.leaveChannel(channelName);
         
         // Kanal boş kaldıysa kanalı sil

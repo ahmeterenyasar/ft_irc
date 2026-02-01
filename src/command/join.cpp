@@ -86,6 +86,31 @@ void Server::joinCommand(IRCMessage& msg)
             sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
             continue;
         }
+        
+        // Kanal ismi uzunluk kontrolü (max 50 karakter)
+        if (channelName.length() > 50)
+        {
+            sendReply(msg.fd, ":server 479 " + nick + " " + channelName + " :Illegal channel name (too long)\r\n");
+            continue;
+        }
+        
+        // Kanal ismi geçersiz karakter kontrolü (boşluk, virgül, kontrol karakterleri)
+        bool validName = true;
+        for (size_t j = 1; j < channelName.length(); ++j)
+        {
+            char c = channelName[j];
+            if (c == ' ' || c == ',' || c == '\r' || c == '\n' || c == '\0' || c == 7)
+            {
+                validName = false;
+                break;
+            }
+        }
+        if (!validName)
+        {
+            sendReply(msg.fd, ":server 479 " + nick + " " + channelName + " :Illegal channel name\r\n");
+            continue;
+        }
+        
         else if (haschannel(channelName))
         {
             /* kanal varsa*/
@@ -117,6 +142,14 @@ void Server::joinCommand(IRCMessage& msg)
             {
                 std::cout << "[DEBUG] User already in channel" << std::endl;
                 continue; // Zaten kanalda, işlem yapma
+            }
+            
+            // Kullanıcının kaç kanalda olduğunu kontrol et (max 10 kanal)
+            if (cli.getChannels().size() >= 10)
+            {
+                sendReply(msg.fd, ":server 405 " + nick + " " + channelName + " :You have joined too many channels\r\n");
+                std::cout << "[DEBUG] User has joined too many channels" << std::endl;
+                continue;
             }
             
             // Key şifre kontrolü
@@ -191,6 +224,14 @@ void Server::joinCommand(IRCMessage& msg)
             //no topic mesahı 
             // isim listesi sadece operator olan kullanıcı
             std::cout << "[DEBUG] Channel does not exist, creating: " << channelName << std::endl;
+            
+            // Kullanıcının kaç kanalda olduğunu kontrol et (max 10 kanal)
+            if (cli.getChannels().size() >= 10)
+            {
+                sendReply(msg.fd, ":server 405 " + nick + " " + channelName + " :You have joined too many channels\r\n");
+                std::cout << "[DEBUG] User has joined too many channels" << std::endl;
+                continue;
+            }
             
             // Yeni kanal oluştur
             Channel newChannel(channelName);

@@ -93,7 +93,10 @@ void Client::leaveChannel(const std::string& channel)
         if (*it == channel)
         {
             _channels.erase(it);
-            _operator_status.erase(channel);
+            // Operator durumunu da temizle
+            std::map<std::string, bool>::iterator opIt = _operator_status.find(channel);
+            if (opIt != _operator_status.end())
+                _operator_status.erase(opIt);
             return;
         }
     }
