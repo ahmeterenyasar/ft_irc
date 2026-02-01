@@ -124,6 +124,12 @@ void Server::kickCommand(IRCMessage& msg)
         // 13. Kullanıcıyı kanaldan çıkar
         channel->removeUser(targetFd);
         
+        // Eğer operator ise operator listesinden de çıkar
+        if (channel->isOperator(targetFd))
+        {
+            channel->removeOperator(targetFd);
+        }
+        
         // 14. Client'ın channel listesinden de çıkar
         Client& targetClient = _clients[targetFd];
         targetClient.leaveChannel(channelName);

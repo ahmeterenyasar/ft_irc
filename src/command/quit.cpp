@@ -91,7 +91,7 @@ void Server::quitCommand(IRCMessage& msg)
     }
     
     // 5. ERROR mesajını kullanıcıya gönder (son mesaj)
-    sendReply(msg.fd, "ERROR :Closing Link: " + host + " (" + quitMessage + ")");
+    sendReply(msg.fd, "ERROR :Closing Link: " + host + " (" + quitMessage + ")\r\n");
 
     // 6. Client'ı sil
     _clients.erase(msg.fd);

@@ -48,6 +48,6 @@ void Server::executeCommand(IRCMessage& msg)
         // ERR_UNKNOWNCOMMAND (421)
         Client& cli = _clients[msg.fd];
         std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-        sendReply(msg.fd, ":server 421 " + nick + " " + msg.Command + " :Unknown command");
+        sendReply(msg.fd, ":server 421 " + nick + " " + msg.Command + " :Unknown command\r\n");
     }
 }

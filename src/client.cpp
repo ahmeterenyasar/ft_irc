@@ -108,3 +108,30 @@ bool Client::isInChannel(const std::string& channel) const
     }
     return false;
 }
+
+// Buffer management functions
+void Client::appendBuffer(const std::string& data)
+{
+    _buffer += data;
+}
+
+void Client::clearBuffer(void)
+{
+    _buffer.clear();
+}
+
+bool Client::hasCompleteMessage(void) const
+{
+    return _buffer.find("\r\n") != std::string::npos;
+}
+
+std::string Client::getNextMessage(void)
+{
+    size_t pos = _buffer.find("\r\n");
+    if (pos == std::string::npos)
+        return "";
+    
+    std::string message = _buffer.substr(0, pos);
+    _buffer.erase(0, pos + 2);
+    return message;
+}

@@ -17,19 +17,19 @@ void Server::cmdUser(IRCMessage& msg)
     // Check if authenticated (PASS required first)
     if (!cli.isAuthenticated())
     {
-        sendReply(msg.fd, ":server 451 " + userName + " :You have not registered");
+        sendReply(msg.fd, ":server 451 " + userName + " :You have not registered\r\n");
         return;
     }
     // ERR_NEEDMOREPARAMS (461)
     if (msg.Parameters.size() < 4)
     {
-        sendReply(msg.fd, ":server 461 " + userName + " USER :Not enough parameters");
+        sendReply(msg.fd, ":server 461 " + userName + " USER :Not enough parameters\r\n");
         return;
     }
     // ERR_ALREADYREGISTRED (462)
     if (cli.isRegistered())
     {
-        sendReply(msg.fd, ":server 462 " + userName + " :You may not reregister");
+        sendReply(msg.fd, ":server 462 " + userName + " :You may not reregister\r\n");
         return;
     }
 
@@ -41,9 +41,9 @@ void Server::cmdUser(IRCMessage& msg)
         cli.setRegistered(true);
         userName = cli.getUsername();
         
-        sendReply(msg.fd, ":server 001 " + userName + " :Welcome to the Internet Relay Network " + userName + "!" + cli.getUsername() + "@server");
-        sendReply(msg.fd, ":server 002 " + userName + " :Your host is server, running version 1.0");
-        sendReply(msg.fd, ":server 003 " + userName + " :This server was created " + std::string(__DATE__));
-        sendReply(msg.fd, ":server 004 " + userName + " server 1.0 o o");
+        sendReply(msg.fd, ":server 001 " + userName + " :Welcome to the Internet Relay Network " + userName + "!" + cli.getUsername() + "@server\r\n");
+        sendReply(msg.fd, ":server 002 " + userName + " :Your host is server, running version 1.0\r\n");
+        sendReply(msg.fd, ":server 003 " + userName + " :This server was created " + std::string(__DATE__) + "\r\n");
+        sendReply(msg.fd, ":server 004 " + userName + " server 1.0 o o\r\n");
     }
 }

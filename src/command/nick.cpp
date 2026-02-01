@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include <set>
 
 // RFC 2812 - NICK command
 // Syntax: NICK <nickname>
@@ -35,14 +36,14 @@ void Server::nickCommand(IRCMessage& msg)
 
     if (msg.Parameters.empty())
     {
-        sendReply(msg.fd, ":server 431 * :No nickname given");
+        sendReply(msg.fd, ":server 431 * :No nickname given\r\n");
         return;
     }
     std::string newNick = msg.Parameters[0];
     if (!isValidNickname(newNick))
     {
         std::string target = cli.getNickname().empty() ? "*" : cli.getNickname();
-        sendReply(msg.fd, ":server 432 " + target + " " + newNick + " :Erroneous nickname");
+        sendReply(msg.fd, ":server 432 " + target + " " + newNick + " :Erroneous nickname\r\n");
         return;
     }
     for (std::map<size_t, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
@@ -50,7 +51,7 @@ void Server::nickCommand(IRCMessage& msg)
         if (it->second.getNickname() == newNick)
         {
             std::string target = cli.getNickname().empty() ? "*" : cli.getNickname();
-            sendReply(msg.fd, ":server 433 " + target + " " + newNick + " :Nickname is already in use");
+            sendReply(msg.fd, ":server 433 " + target + " " + newNick + " :Nickname is already in use\r\n");
             return;
         }
     }
@@ -63,20 +64,41 @@ void Server::nickCommand(IRCMessage& msg)
         // Mesaj: :EskiNick!User@Host NICK :YeniNick
         std::string msgToSend = ":" + oldNick + "!" + oldUser + "@" + oldHost + " NICK :" + newNick + "\r\n";
         
+        // Kendisine bildir
         send(msg.fd, msgToSend.c_str(), msgToSend.length(), 0);
         
-        // 2. [EKSİK OLAN KISIM] Ortak kanallara bildir
-        // Bu fonksiyonu sonradan yazman gerekecek:
-        // broadcastToCommonChannels(cli, msgToSend);
+        // Ortak kanallardaki kullanıcılara bildir
+        std::set<size_t> notifiedUsers;
+        std::vector<std::string> channels = cli.getChannels();
+        
+        for (size_t i = 0; i < channels.size(); i++)
+        {
+            for (size_t j = 0; j < _channels.size(); ++j)
+            {
+                if (_channels[j].getName() == channels[i])
+                {
+                    std::vector<size_t> members = _channels[j].getMembers();
+                    for (size_t m = 0; m < members.size(); ++m)
+                    {
+                        if (members[m] != msg.fd && notifiedUsers.find(members[m]) == notifiedUsers.end())
+                        {
+                            send(members[m], msgToSend.c_str(), msgToSend.length(), 0);
+                            notifiedUsers.insert(members[m]);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     }
     cli.setNickname(newNick);
     if (cli.isAuthenticated() && !cli.getUsername().empty() && 
         !cli.getNickname().empty() && !cli.isRegistered())
     {
         cli.setRegistered(true);
-        sendReply(msg.fd, ":server 001 " + newNick + " :Welcome to the Internet Relay Network " + newNick + "!" + cli.getUsername() + "@server");
-        sendReply(msg.fd, ":server 002 " + newNick + " :Your host is server, running version 1.0");
-        sendReply(msg.fd, ":server 003 " + newNick + " :This server was created " + std::string(__DATE__));
-        sendReply(msg.fd, ":server 004 " + newNick + " server 1.0 o o");
+        sendReply(msg.fd, ":server 001 " + newNick + " :Welcome to the Internet Relay Network " + newNick + "!" + cli.getUsername() + "@server\r\n");
+        sendReply(msg.fd, ":server 002 " + newNick + " :Your host is server, running version 1.0\r\n");
+        sendReply(msg.fd, ":server 003 " + newNick + " :This server was created " + std::string(__DATE__) + "\r\n");
+        sendReply(msg.fd, ":server 004 " + newNick + " server 1.0 o o\r\n");
     }
 }

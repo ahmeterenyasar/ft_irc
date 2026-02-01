@@ -14,13 +14,13 @@ void Server::partCommand(IRCMessage& msg)
 
     if (msg.Parameters.empty())
     {
-        sendReply(msg.fd, ":server 461 " + nick + " PART :Not enough parameters");
+        sendReply(msg.fd, ":server 461 " + nick + " PART :Not enough parameters\r\n");
         return;
     }
     
     if (cli.isRegistered() == false)
     {
-        sendReply(msg.fd, ":server 451 " + nick + " PART :You have not registered");
+        sendReply(msg.fd, ":server 451 " + nick + " PART :You have not registered\r\n");
         return;
     }
     
@@ -38,14 +38,14 @@ void Server::partCommand(IRCMessage& msg)
         // Kanal adı validasyonu
         if (channelName.empty() || channelName[0] != '#')
         {
-            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
+            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
             continue;
         }
         
         // Kanal var mı kontrolü
         if (!haschannel(channelName))
         {
-            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
+            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
             continue;
         }
         
@@ -66,7 +66,7 @@ void Server::partCommand(IRCMessage& msg)
         // Kullanıcı bu kanalda mı kontrolü
         if (!channel->hasUser(msg.fd))
         {
-            sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel");
+            sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
             continue;
         }
         
