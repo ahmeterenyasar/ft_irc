@@ -33,7 +33,7 @@ void Server::kickCommand(IRCMessage& msg)
     // Geçerli: 1 kanal + N user VEYA N kanal + N user
     if (channels.size() != 1 && channels.size() != users.size())
     {
-        sendReply(msg.fd, ":server 461 " + nick + " KICK :Not enough parameters\r\n");
+        sendReply(msg.fd, ":server 461 " + nick + " KICK :Not enough parameters");
         return;
     }
 
@@ -47,7 +47,7 @@ void Server::kickCommand(IRCMessage& msg)
         // 6. Kanal var mı kontrolü - ERR_NOSUCHCHANNEL (403)
         if (!haschannel(channelName))
         {
-            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
+            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
             continue;
         }
 
@@ -81,25 +81,26 @@ void Server::kickCommand(IRCMessage& msg)
         // Kendini kicklemeye çalışıyor mu kontrol et (mantıksal hata)
         if (targetFd == msg.fd)
         {
-            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You cannot kick yourself\r\n");
+            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You cannot kick yourself");
             continue;
         }
 
         if (targetClient == NULL)
         {
-            sendReply(msg.fd, ":server 401 " + nick + " " + targetUser + " :No such nick/channel\r\n");
+            sendReply(msg.fd, ":server 401 " + nick + " " + targetUser + " :No such nick/channel");
             continue;
         }
 
         // 11. Atılacak kullanıcı kanalda mı? - ERR_USERNOTINCHANNEL (441)
         if (!channel->hasUser(targetFd))
         {
-            sendReply(msg.fd, ":server 441 " + nick + " " + targetUser + " " + channelName + " :They aren't on that channel\r\n");
+            sendReply(msg.fd, ":server 441 " + nick + " " + targetUser + " " + channelName + " :They aren't on that channel");
             continue;
         }
 
         // 12. KICK mesajını tüm kanal üyelerine broadcast et (atılan kullanıcı dahil!)
-        std::string kickMsg = getUserPrefix(cli) +
+        std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+        std::string kickMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname +
                               " KICK " + channelName + " " + targetUser + " :" + reason + "\r\n";
         
         broadcastToChannel(this, channel, kickMsg, 0);

@@ -9,7 +9,6 @@ IRCMessage parser(std::string line, size_t fd)
     IRCMessage msg;
     msg.fd = fd;
 
-    std::cout << "Parsing line: [" << line << "] from FD: " << fd << std::endl;
     // Boş satır kontrolü
     if (line.empty())
         return msg;

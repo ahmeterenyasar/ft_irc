@@ -18,6 +18,7 @@
 #include <map>
 #include <sstream>
 #include <cctype>
+#include <csignal>
 #include "client.hpp"
 #include "IRCMessage.hpp"
 #include "channel.hpp"
@@ -33,10 +34,10 @@ class Server
 		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
 		std::map<size_t, Client> _clients; // Bağlı istemciler
 		std::vector<Channel> _channels; // IRC kanalları
-
-	public:
-		Server();
-		Server(int port, const std::string& password);
+		static bool _signalReceived; // Signal flag
+	bool _isShutdown; // Shutdown flag to prevent double shutdown
+public:
+	Server();		Server(int port, const std::string& password);
 		Server(const Server &other);
 		Server& operator=(const Server& other);
 		~Server();
@@ -53,6 +54,8 @@ class Server
 		void disconnectClient(size_t index); // İstemci bağlantısını kesmek için
 		void client_read(size_t fd, size_t index); // İstemciden veri okumak için
 		void sendSimpleWelcome(int clientFd);
+		void shutdown(); // Graceful shutdown
+		static void signalHandler(int signum); // Signal handler
 		
 		// Commands Section - Utility
 		void sendReply(int fd, const std::string &reply);
@@ -63,6 +66,10 @@ class Server
 		void nickCommand(IRCMessage& msg);
 		void cmdUser(IRCMessage& msg);
 		void quitCommand(IRCMessage& msg);
+		void capCommand(IRCMessage& msg);
+		void pingCommand(IRCMessage& msg);
+		void whoCommand(IRCMessage& msg);
+		void listCommand(IRCMessage& msg);
 
 		// Commands Section - Channel Operations
 		void joinCommand(IRCMessage& msg);
@@ -89,8 +96,6 @@ class Server
 		std::vector<Channel>& getChannels() { return _channels; }
 };
 
-// debug fonksiyonu
-std::string familyToString(int family);
-// utils fonk
 bool isValidPort(char *port_str);
+
 #endif

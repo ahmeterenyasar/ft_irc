@@ -17,7 +17,7 @@ void Server::quitCommand(IRCMessage& msg)
     if (!msg.Parameters.empty())
         quitMessage = msg.Parameters[0];
 
-    std::string quitMsg = getUserPrefix(cli) + " QUIT :" + quitMessage + "\r\n";
+    std::string quitMsg = ":" + nick + "!" + user + "@" + host + " QUIT :" + quitMessage + "\r\n";
 
     // 1. Kullanıcının bulunduğu tüm kanalları al (state değişmeden önce)
     std::vector<std::string> channels = cli.getChannels();
@@ -30,7 +30,7 @@ void Server::quitCommand(IRCMessage& msg)
     cleanupEmptyChannels(this);
     
     // 5. ERROR mesajını kullanıcıya gönder (son mesaj)
-    sendReply(msg.fd, "ERROR :Closing Link: " + host + " (" + quitMessage + ")\r\n");
+    sendReply(msg.fd, "ERROR :Closing Link: " + host + " (" + quitMessage + ")");
 
     // 6. Client'ı sil
     _clients.erase(msg.fd);

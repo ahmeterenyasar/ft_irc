@@ -40,7 +40,8 @@ void Server::noticeCommand(IRCMessage &msg)
 				continue ;
 			if (!channel->hasUser(msg.fd))
 				continue ;
-			std::string noticeMsg = getUserPrefix(cli) + " NOTICE " + target + " :" + message + "\r\n";
+			std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+			std::string noticeMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname + " NOTICE " + target + " :" + message + "\r\n";
 			broadcastToChannel(this, channel, noticeMsg, msg.fd);
 		}
 		else
@@ -49,7 +50,8 @@ void Server::noticeCommand(IRCMessage &msg)
 			if (!targetClient)
 				continue ;
 
-			std::string noticeMsg = getUserPrefix(cli) + " NOTICE " + target + " :" + message + "\r\n";
+			std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+			std::string noticeMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname + " NOTICE " + target + " :" + message + "\r\n";
 			send(targetFd, noticeMsg.c_str(), noticeMsg.length(), 0);
 		}
 	}

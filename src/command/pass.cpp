@@ -17,19 +17,19 @@ void Server::passCommand(IRCMessage& msg)
     // ERR_NEEDMOREPARAMS (461)
     if (msg.Parameters.empty())
     {
-        sendReply(msg.fd, ":server 461 " + userName + " PASS :Not enough parameters\r\n");
+        sendReply(msg.fd, ":server 461 " + userName + " PASS :Not enough parameters");
         return;
     }
     // ERR_ALREADYREGISTRED (462)
     if (cli.isRegistered() || cli.isAuthenticated() == true)
     {
-        sendReply(msg.fd, ":server 462 " + userName + " :You may not reregister\r\n");
+        sendReply(msg.fd, ":server 462 " + userName + " :You may not reregister");
         return;
     }
     // ERR_PASSWDMISMATCH (464)
     if (msg.Parameters[0] != this->_password)
     {
-        sendReply(msg.fd, ":server 464 " + userName + " :Password incorrect\r\n");
+        sendReply(msg.fd, ":server 464 " + userName + " :Password incorrect");
         cli.setAuthenticated(false);
         return;
     }

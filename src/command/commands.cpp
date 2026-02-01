@@ -31,6 +31,14 @@ void Server::executeCommand(IRCMessage& msg)
         cmdUser(msg);
     else if (cmd == "QUIT")
         quitCommand(msg);
+    else if (cmd == "CAP")
+        capCommand(msg);
+    else if (cmd == "PING")
+        pingCommand(msg);
+    else if (cmd == "WHO")
+        whoCommand(msg);
+    else if (cmd == "LIST")
+        listCommand(msg);
     else if (cmd == "JOIN")
         joinCommand(msg);
     else if (cmd == "PART")
@@ -52,6 +60,6 @@ void Server::executeCommand(IRCMessage& msg)
         // ERR_UNKNOWNCOMMAND (421)
         Client& cli = _clients[msg.fd];
         std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-        sendReply(msg.fd, ":server 421 " + nick + " " + msg.Command + " :Unknown command\r\n");
+        sendReply(msg.fd, ":server 421 " + nick + " " + msg.Command + " :Unknown command");
     }
 }

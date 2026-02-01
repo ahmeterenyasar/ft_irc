@@ -33,14 +33,14 @@ void Server::partCommand(IRCMessage& msg)
         // Kanal adı validasyonu
         if (channelName.empty() || channelName[0] != '#')
         {
-            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
+            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
             continue;
         }
         
         // Kanal var mı kontrolü
         if (!haschannel(channelName))
         {
-            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
+            sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
             continue;
         }
         
@@ -58,11 +58,12 @@ void Server::partCommand(IRCMessage& msg)
         std::vector<size_t> members = channel->getMembers();
         
         // PART mesajını tüm kanal üyelerine broadcast et
+        std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
         std::string partMsg;
         if (!partMessage.empty())
-            partMsg = getUserPrefix(cli) + " PART " + channelName + " :" + partMessage + "\r\n";
+            partMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname + " PART " + channelName + " :" + partMessage + "\r\n";
         else
-            partMsg = getUserPrefix(cli) + " PART " + channelName + "\r\n";
+            partMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname + " PART " + channelName + "\r\n";
         
         for (size_t m = 0; m < members.size(); ++m)
         {

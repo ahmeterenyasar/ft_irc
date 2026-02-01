@@ -24,7 +24,7 @@ void Server::inviteCommand(IRCMessage& msg)
     // Kendini invite etmeye çalışıyor mu?
     if (targetNick == nick)
     {
-        sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :Cannot invite yourself\r\n");
+        sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :Cannot invite yourself");
         return;
     }
 
@@ -34,7 +34,7 @@ void Server::inviteCommand(IRCMessage& msg)
 
     if (targetClient == NULL)
     {
-        sendReply(msg.fd, ":server 401 " + nick + " " + targetNick + " :No such nick/channel\r\n");
+        sendReply(msg.fd, ":server 401 " + nick + " " + targetNick + " :No such nick/channel");
         return;
     }
 
@@ -48,21 +48,21 @@ void Server::inviteCommand(IRCMessage& msg)
         // 4a. Davet eden kanalda mı? - ERR_NOTONCHANNEL (442)
         if (!channel->hasUser(msg.fd))
         {
-            sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+            sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel");
             return;
         }
 
         // 4b. Hedef kullanıcı zaten kanalda mı? - ERR_USERONCHANNEL (443)
         if (channel->hasUser(targetFd))
         {
-            sendReply(msg.fd, ":server 443 " + nick + " " + targetNick + " " + channelName + " :is already on channel\r\n");
+            sendReply(msg.fd, ":server 443 " + nick + " " + targetNick + " " + channelName + " :is already on channel");
             return;
         }
 
         // 4c. Kanal +i (invite-only) ise operator kontrolü - ERR_CHANOPRIVSNEEDED (482)
         if (channel->isInviteOnly() && !channel->isOperator(msg.fd))
         {
-            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator");
             return;
         }
     }
@@ -74,10 +74,11 @@ void Server::inviteCommand(IRCMessage& msg)
     }
 
     // 6. RPL_INVITING (341) - Davet edene onay
-    sendReply(msg.fd, ":server 341 " + nick + " " + targetNick + " " + channelName + "\r\n");
+    sendReply(msg.fd, ":server 341 " + nick + " " + targetNick + " " + channelName);
 
     // 7. INVITE mesajı - Davet edilen kullanıcıya
-    std::string inviteMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() + 
+    std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+    std::string inviteMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname + 
                             " INVITE " + targetNick + " " + channelName + "\r\n";
     sendReply(targetFd, inviteMsg);
 

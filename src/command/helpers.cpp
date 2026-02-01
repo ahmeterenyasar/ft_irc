@@ -10,7 +10,7 @@ bool checkRegistered(Server* server, IRCMessage& msg, const Client& cli)
     if (!cli.isRegistered())
     {
         std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-        server->sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
+        server->sendReply(msg.fd, ":server 451 " + nick + " :You have not registered");
         return false;
     }
     return true;
@@ -21,7 +21,7 @@ bool checkMinParams(Server* server, IRCMessage& msg, const Client& cli, size_t m
     if (msg.Parameters.size() < minParams)
     {
         std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-        server->sendReply(msg.fd, ":server 461 " + nick + " " + command + " :Not enough parameters\r\n");
+        server->sendReply(msg.fd, ":server 461 " + nick + " " + command + " :Not enough parameters");
         return false;
     }
     return true;
@@ -32,7 +32,7 @@ bool checkChannelOperator(Server* server, IRCMessage& msg, const Client& cli, Ch
     if (!channel->isOperator(msg.fd))
     {
         std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-        server->sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+        server->sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator");
         return false;
     }
     return true;
@@ -43,7 +43,7 @@ bool checkUserInChannel(Server* server, IRCMessage& msg, const Client& cli, Chan
     if (!channel->hasUser(msg.fd))
     {
         std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-        server->sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        server->sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel");
         return false;
     }
     return true;

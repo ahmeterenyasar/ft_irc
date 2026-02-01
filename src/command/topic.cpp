@@ -22,7 +22,7 @@ void Server::topicCommand(IRCMessage& msg)
 
     if (!haschannel(channelName))
     {
-        sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel\r\n");
+        sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
         return;
     }
 
@@ -41,12 +41,12 @@ void Server::topicCommand(IRCMessage& msg)
         if (channel->getTopic().empty())
         {
             // RPL_NOTOPIC (331)
-            sendReply(msg.fd, ":server 331 " + nick + " " + channelName + " :No topic is set\r\n");
+            sendReply(msg.fd, ":server 331 " + nick + " " + channelName + " :No topic is set");
         }
         else
         {
             // RPL_TOPIC (332)
-            sendReply(msg.fd, ":server 332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
+            sendReply(msg.fd, ":server 332 " + nick + " " + channelName + " :" + channel->getTopic());
         }
         return;
     }
@@ -68,7 +68,7 @@ void Server::topicCommand(IRCMessage& msg)
         if (!channel->isOperator(msg.fd))
         {
             // ERR_CHANOPRIVSNEEDED (482)
-            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator");
             return;
         }
     }
@@ -78,7 +78,8 @@ void Server::topicCommand(IRCMessage& msg)
     channel->setTopic(newTopic);
 
     // TOPIC değişikliğini tüm kanal üyelerine broadcast et (değiştiren dahil!)
-    std::string topicMsg = getUserPrefix(cli) +
+    std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+    std::string topicMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname +
                            " TOPIC " + channelName + " :" + newTopic + "\r\n";
     
     broadcastToChannel(this, channel, topicMsg, 0);

@@ -23,19 +23,19 @@ void Server::modeCommand(IRCMessage& msg)
     std::string target = msg.Parameters[0];
     if (target.empty() || (target[0] != '#' && target[0] != '&'))
     {
-        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
+        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel");
         return;
     }
     if (!haschannel(target))
     {
-        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
+        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel");
         return;
     }
 
     Channel* channel = findChannel(this, target);
     if (channel == NULL)
     {
-        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
+        sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel");
         return;
     }
     
@@ -44,7 +44,7 @@ void Server::modeCommand(IRCMessage& msg)
     
     if (msg.Parameters.size() == 1)
     {
-        sendReply(msg.fd, ":server 324 " + nick + " " + target + " " + channel->getModeString() + "\r\n");
+        sendReply(msg.fd, ":server 324 " + nick + " " + target + " " + channel->getModeString());
         return;
     }
     
@@ -53,7 +53,8 @@ void Server::modeCommand(IRCMessage& msg)
     std::string modeString = msg.Parameters[1];
     bool adding = true;
     size_t paramIndex = 2;
-    std::string prefix = ":" + nick + "!~" + cli.getUsername() + "@localhost";
+    std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+    std::string prefix = ":" + nick + "!" + cli.getUsername() + "@" + hostname;
     for (size_t i = 0; i < modeString.size(); i++)
     {
         char mode = modeString[i];
@@ -79,7 +80,7 @@ void Server::modeCommand(IRCMessage& msg)
             {
                 if (msg.Parameters.size() <= paramIndex)
                 {
-                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
+                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters");
                     continue;
                 }
                 std::string key = msg.Parameters[paramIndex++];
@@ -102,7 +103,7 @@ void Server::modeCommand(IRCMessage& msg)
         {
             if (msg.Parameters.size() <= paramIndex)
             {
-                sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
+                sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters");
                 continue;
             }
             std::string targetNick = msg.Parameters[paramIndex++];
@@ -117,12 +118,12 @@ void Server::modeCommand(IRCMessage& msg)
             }
             if (targetFd == -1)
             {
-                sendReply(msg.fd, ":server 401 " + nick + " " + targetNick + " :No such nick/channel\r\n");
+                sendReply(msg.fd, ":server 401 " + nick + " " + targetNick + " :No such nick/channel");
                 continue;
             }
             if (!channel->hasUser((size_t)targetFd))
             {
-                sendReply(msg.fd, ":server 441 " + nick + " " + targetNick + " " + target + " :They aren't on that channel\r\n");
+                sendReply(msg.fd, ":server 441 " + nick + " " + targetNick + " " + target + " :They aren't on that channel");
                 continue;
             }
             Client& targetClient = _clients[(size_t)targetFd];
@@ -134,14 +135,14 @@ void Server::modeCommand(IRCMessage& msg)
                 std::vector<size_t> members = channel->getMembers();
                 for (size_t j = 0; j < members.size(); j++)
                     sendReply(members[j], modeChange);
-            }
+            }  
             else
             {
                 // Son operator'ı kaldırmaya çalışıyor mu kontrol et
                 std::vector<size_t> operators = channel->getOperators();
                 if (operators.size() == 1 && channel->isOperator((size_t)targetFd))
                 {
-                    sendReply(msg.fd, ":server 482 " + nick + " " + target + " :Cannot remove last operator\r\n");
+                    sendReply(msg.fd, ":server 482 " + nick + " " + target + " :Cannot remove last operator");
                     continue;
                 }
                 
@@ -159,19 +160,19 @@ void Server::modeCommand(IRCMessage& msg)
             {
                 if (msg.Parameters.size() <= paramIndex)
                 {
-                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
+                    sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters");
                     continue;
                 }
                 int limit = atoi(msg.Parameters[paramIndex++].c_str());
                 if (limit <= 0)
                 {
-                    sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :Invalid user limit. Must be a positive integer\r\n");
+                    sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :Invalid user limit. Must be a positive integer");
                     continue;
                 }
                 // Çok büyük limit kontrolü (max 1000)
                 if (limit > 1000)
                 {
-                    sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :User limit too large (max: 1000)\r\n");
+                    sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :User limit too large (max: 1000)");
                     continue;
                 }
                 channel->setUserLimit(limit);
@@ -189,7 +190,8 @@ void Server::modeCommand(IRCMessage& msg)
                     sendReply(members[j], modeChange);
             }
         }
-        else
-            sendReply(msg.fd, ":server 472 " + nick + " " + std::string(1, mode) + " :is unknown mode char to me\r\n");
+        // Bilinmeyen modları sessizce görmezden gel (KvIRC uyumluluğu için)
+        // else
+        //     sendReply(msg.fd, ":server 472 " + nick + " " + std::string(1, mode) + " :is unknown mode char to me\r\n");
     }
 }

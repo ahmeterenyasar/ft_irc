@@ -1,20 +1,20 @@
 #include "../inc/server.hpp"
 #include "../inc/client.hpp"
 
+// Global flag for signal handling
+bool Server::_signalReceived = false;
 
-Server::Server() : _server_fd(-1), _port(0), _password("") {}
+Server::Server() : _server_fd(-1), _port(0), _password(""), _isShutdown(false) {}
 
-Server::Server(int port, const std::string& password) : _server_fd(-1), _port(port), _password(password) {
+Server::Server(int port, const std::string& password) : _server_fd(-1), _port(port), _password(password), _isShutdown(false) {
 }
 
 Server::Server(const Server& other) {
     *this = other;
 }
 
-Server:: ~Server() {
-    if (_server_fd >= 0) {
-        close(_server_fd);
-    }
+Server::~Server() {
+    shutdown();
 }
 
 Server& Server::operator=(const Server& other) {
@@ -67,6 +67,17 @@ void  Server::server_bind()
         exit(EXIT_FAILURE);
     }
 }
+
+bool Server::haschannel(std::string name)
+{
+    for (size_t i = 0; i < _channels.size(); ++i)
+    {
+        if (_channels[i].getName() == name)
+            return true;
+    }
+    return false;
+}
+
 
 void Server::server_listen()
 {
@@ -132,6 +143,11 @@ void Server::accept_new_connection()
         p.revents = 0; // Başlangıçta olay yok
         _pollFds.push_back(p); // Yeni istemci soketini pollFds vektörüne ekle
         _clients[client_fd] = Client(client_fd); // Yeni Client nesnesi oluştur ve ekle
+        
+        // Get client IP address
+        char client_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &client_address.sin_addr, client_ip, INET_ADDRSTRLEN);
+        _clients[client_fd].setHostname(client_ip);
     }
     sendSimpleWelcome(_pollFds.back().fd); // Yeni bağlanan istemciye hoş geldin mesajı gönder
 }
@@ -185,7 +201,6 @@ void Server::client_read(size_t fd, size_t index)
     ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0); // -1 for null terminator
     if (n == 0)
     {
-        std::cout << "[DEBUG] Client closed connection fd=" << fd << "\n";
         disconnectClient(index);
         return;
     }
@@ -193,14 +208,12 @@ void Server::client_read(size_t fd, size_t index)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             return;
-        perror("recv");
         disconnectClient(index);
         return;
     }
     // Buffer overflow koruması - maksimum 4096 byte
     if (_inbuf[fd].size() + n > 4096)
     {
-        std::cout << "[WARNING] Buffer overflow detected for fd=" << fd << ", clearing buffer\n";
         _inbuf[fd].clear();
         sendReply(fd, "ERROR :Input buffer overflow\r\n");
         return;
@@ -215,7 +228,6 @@ void Server::client_read(size_t fd, size_t index)
         if (!line.empty() && line[line.size() - 1] == '\r')
             line.erase(line.size() - 1);
         buffer.erase(0, pos + 1);
-        std::cout << "[IRC] fd=" << fd << " cmd=\"" << line << "\"\n";
         
         // TEST
         IRCMessage msg = parser(line, fd);
@@ -227,13 +239,17 @@ void Server::client_read(size_t fd, size_t index)
 void Server::run() 
 {
     init_run();
-    while (42)
+    while (!_signalReceived)
     {
         int pollCount = poll(&_pollFds[0], _pollFds.size(), -1);
         if (pollCount < 0)
         {
              if (errno == EINTR)
+             {
+                if (_signalReceived)
+                    break;
                 continue;
+             }
             perror("Poll failed");
             break;
         }
@@ -262,6 +278,10 @@ void Server::run()
             }
         }
     }
+    
+    // Graceful shutdown when signal received
+    std::cout << "\nPerforming graceful shutdown..." << std::endl;
+    shutdown();
 }
 
 std::string Server::getUserList(const Channel& channel) const
@@ -287,4 +307,48 @@ std::string Server::getUserList(const Channel& channel) const
             userList += " ";
     }
     return userList;
+}
+
+// Signal handler
+void Server::signalHandler(int signum)
+{
+    (void)signum;
+    _signalReceived = true;
+    std::cout << "\nShutdown signal received..." << std::endl;
+}
+
+// Graceful shutdown
+void Server::shutdown()
+{
+    if (_isShutdown)
+        return; // Already shutdown
+    _isShutdown = true;
+    
+    std::cout << "Shutting down server..." << std::endl;
+    
+    // Send QUIT message to all connected clients
+    std::map<size_t, Client>::iterator it = _clients.begin();
+    while (it != _clients.end())
+    {
+        size_t fd = it->first;
+        std::string quitMsg = "ERROR :Server shutting down\r\n";
+        send(fd, quitMsg.c_str(), quitMsg.length(), 0);
+        close(fd);
+        ++it;
+    }
+    
+    // Clear all data structures
+    _clients.clear();
+    _channels.clear();
+    _inbuf.clear();
+    _pollFds.clear();
+    
+    // Close server socket
+    if (_server_fd >= 0)
+    {
+        close(_server_fd);
+        _server_fd = -1;
+    }
+    
+    std::cout << "Server shutdown complete." << std::endl;
 }

@@ -16,14 +16,14 @@ void Server::privmsgCommand(IRCMessage& msg)
     // 1. ERR_NORECIPIENT (411)
     if (!checkMinParams(this, msg, cli, 1, "PRIVMSG"))
     {
-        sendReply(msg.fd, ":server 411 " + nick + " :No recipient given (PRIVMSG)\r\n");
+        sendReply(msg.fd, ":server 411 " + nick + " :No recipient given (PRIVMSG)");
         return;
     }
 
     // 2. ERR_NOTEXTTOSEND (412)
     if (msg.Parameters.size() < 2 || msg.Parameters[1].empty())
     {
-        sendReply(msg.fd, ":server 412 " + nick + " :No text to send\r\n");
+        sendReply(msg.fd, ":server 412 " + nick + " :No text to send");
         return;
     }
 
@@ -53,7 +53,7 @@ void Server::privmsgCommand(IRCMessage& msg)
             // 8. Kanal var mı kontrolü - ERR_NOSUCHCHANNEL (403)
             if (!haschannel(target))
             {
-                sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
+                sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel");
                 continue;
             }
 
@@ -66,12 +66,13 @@ void Server::privmsgCommand(IRCMessage& msg)
             // 10. Gönderen kanalda mı kontrolü - ERR_CANNOTSENDTOCHAN (404)
             if (!channel->hasUser(msg.fd))
             {
-                sendReply(msg.fd, ":server 404 " + nick + " " + target + " :Cannot send to channel\r\n");
+                sendReply(msg.fd, ":server 404 " + nick + " " + target + " :Cannot send to channel");
                 continue;
             }
 
             // 11. Mesajı kanal üyelerine broadcast et (gönderen hariç)
-            std::string privmsgMsg = getUserPrefix(cli) +
+            std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+            std::string privmsgMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname +
                                      " PRIVMSG " + target + " :" + message + "\r\n";
             
             broadcastToChannel(this, channel, privmsgMsg, msg.fd);
@@ -81,26 +82,20 @@ void Server::privmsgCommand(IRCMessage& msg)
             // ============= KULLANICIYA MESAJ =============
             
             // 12. Hedef kullanıcıyı bul - ERR_NOSUCHNICK (401)
-            int targetFd = -1;
-            for (std::map<size_t, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-            {
-                if (it->second.getNickname() == target)
-                {
-                    targetFd = it->first;
-                    break;
-                }
-            }
+            size_t targetFd = 0;
+            Client* targetClient = findClientByNick(this, target, targetFd);
 
-            if (targetFd == -1)
+            if (targetClient == NULL)
             {
-                sendReply(msg.fd, ":server 401 " + nick + " " + target + " :No such nick/channel\r\n");
+                sendReply(msg.fd, ":server 401 " + nick + " " + target + " :No such nick/channel");
                 continue;
             }
 
             // 13. Mesajı hedef kullanıcıya gönder
-            std::string privmsgMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() +
+            std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+            std::string privmsgMsg = ":" + nick + "!" + cli.getUsername() + "@" + hostname +
                                      " PRIVMSG " + target + " :" + message + "\r\n";
-            sendReply(targetFd, privmsgMsg);
+            send(targetFd, privmsgMsg.c_str(), privmsgMsg.length(), 0);
 
         }
     }

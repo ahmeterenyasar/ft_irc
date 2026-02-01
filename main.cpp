@@ -1,6 +1,6 @@
 
 #include "inc/server.hpp"
-
+#include <csignal>
 
 int main(int argc, char **argv)
 {
@@ -14,6 +14,11 @@ int main(int argc, char **argv)
         std::cerr << "Error: Invalid port. Use range 1 - 65535" << std::endl;
         return 1;
     }
+    
+    // Setup signal handlers
+    signal(SIGINT, Server::signalHandler);
+    signal(SIGQUIT, Server::signalHandler);
+    
     try             
     {
         int port = std::atoi(argv[1]);

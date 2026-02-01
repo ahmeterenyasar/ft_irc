@@ -37,14 +37,14 @@ void Server::nickCommand(IRCMessage& msg)
 
     if (msg.Parameters.empty())
     {
-        sendReply(msg.fd, ":server 431 * :No nickname given\r\n");
+        sendReply(msg.fd, ":server 431 * :No nickname given");
         return;
     }
     std::string newNick = msg.Parameters[0];
     if (!isValidNickname(newNick))
     {
         std::string target = cli.getNickname().empty() ? "*" : cli.getNickname();
-        sendReply(msg.fd, ":server 432 " + target + " " + newNick + " :Erroneous nickname\r\n");
+        sendReply(msg.fd, ":server 432 " + target + " " + newNick + " :Erroneous nickname");
         return;
     }
     for (std::map<size_t, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
@@ -52,7 +52,7 @@ void Server::nickCommand(IRCMessage& msg)
         if (it->second.getNickname() == newNick)
         {
             std::string target = cli.getNickname().empty() ? "*" : cli.getNickname();
-            sendReply(msg.fd, ":server 433 " + target + " " + newNick + " :Nickname is already in use\r\n");
+            sendReply(msg.fd, ":server 433 " + target + " " + newNick + " :Nickname is already in use");
             return;
         }
     }
@@ -76,9 +76,12 @@ void Server::nickCommand(IRCMessage& msg)
         !cli.getNickname().empty() && !cli.isRegistered())
     {
         cli.setRegistered(true);
-        sendReply(msg.fd, ":server 001 " + newNick + " :Welcome to the Internet Relay Network " + newNick + "!" + cli.getUsername() + "@server\r\n");
-        sendReply(msg.fd, ":server 002 " + newNick + " :Your host is server, running version 1.0\r\n");
-        sendReply(msg.fd, ":server 003 " + newNick + " :This server was created " + std::string(__DATE__) + "\r\n");
-        sendReply(msg.fd, ":server 004 " + newNick + " server 1.0 o o\r\n");
+        
+        std::string host = cli.getHostname().empty() ? "localhost" : cli.getHostname();
+
+        sendReply(msg.fd, ":server 001 " + newNick + " :Welcome to the Internet Relay Network " + newNick + "!" + cli.getUsername() + "@" + host);
+        sendReply(msg.fd, ":server 002 " + newNick + " :Your host is server, running version 1.0");
+        sendReply(msg.fd, ":server 003 " + newNick + " :This server was created " + std::string(__DATE__));
+        sendReply(msg.fd, ":server 004 " + newNick + " server 1.0 o o");
     }
 }
