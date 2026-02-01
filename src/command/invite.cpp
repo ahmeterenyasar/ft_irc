@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 
 // RFC 2812 - INVITE command
 // Syntax: INVITE <nickname> <channel>
@@ -11,19 +12,11 @@ void Server::inviteCommand(IRCMessage& msg)
     Client& cli = _clients[msg.fd];
     std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
-    // 1. Kayıt kontrolü
-    if (!cli.isRegistered())
-    {
-        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
+    if (!checkRegistered(this, msg, cli))
         return;
-    }
 
-    // 2. Parametre kontrolü - ERR_NEEDMOREPARAMS (461)
-    if (msg.Parameters.size() < 2)
-    {
-        sendReply(msg.fd, ":server 461 " + nick + " INVITE :Not enough parameters\r\n");
+    if (!checkMinParams(this, msg, cli, 2, "INVITE"))
         return;
-    }
 
     std::string targetNick = msg.Parameters[0];
     std::string channelName = msg.Parameters[1];
@@ -36,17 +29,10 @@ void Server::inviteCommand(IRCMessage& msg)
     }
 
     // 3. Hedef kullanıcıyı bul - ERR_NOSUCHNICK (401)
-    int targetFd = -1;
-    for (std::map<size_t, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-    {
-        if (it->second.getNickname() == targetNick)
-        {
-            targetFd = it->first;
-            break;
-        }
-    }
+    size_t targetFd = 0;
+    Client* targetClient = findClientByNick(this, targetNick, targetFd);
 
-    if (targetFd == -1)
+    if (targetClient == NULL)
     {
         sendReply(msg.fd, ":server 401 " + nick + " " + targetNick + " :No such nick/channel\r\n");
         return;
@@ -55,15 +41,7 @@ void Server::inviteCommand(IRCMessage& msg)
     // Client& targetClient = _clients[targetFd];
 
     // 4. Kanal VARSA kontroller yap
-    Channel* channel = NULL;
-    for (size_t i = 0; i < _channels.size(); ++i)
-    {
-        if (_channels[i].getName() == channelName)
-        {
-            channel = &_channels[i];
-            break;
-        }
-    }
+    Channel* channel = findChannel(this, channelName);
 
     if (channel != NULL)
     {

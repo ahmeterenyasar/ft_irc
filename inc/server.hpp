@@ -83,6 +83,10 @@ class Server
 
 		// User list for NAMES reply (placeholder - needs nick mapping)
     	std::string getUserList(const Channel& channel) const;
+		
+		// Getters for helper functions
+		std::map<size_t, Client>& getClients() { return _clients; }
+		std::vector<Channel>& getChannels() { return _channels; }
 };
 
 // debug fonksiyonu

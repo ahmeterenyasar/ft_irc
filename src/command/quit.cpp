@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 #include <set>
 
 // RFC 2812 - QUIT command
@@ -16,82 +17,17 @@ void Server::quitCommand(IRCMessage& msg)
     if (!msg.Parameters.empty())
         quitMessage = msg.Parameters[0];
 
-    std::string quitMsg = ":" + nick + "!" + user + "@" + host + " QUIT :" + quitMessage + "\r\n";
+    std::string quitMsg = getUserPrefix(cli) + " QUIT :" + quitMessage + "\r\n";
 
     // 1. Kullanıcının bulunduğu tüm kanalları al (state değişmeden önce)
     std::vector<std::string> channels = cli.getChannels();
     
-    // 2. Aynı kullanıcıya birden fazla QUIT göndermemek için set kullan
-    std::set<size_t> notifiedUsers;
-    
-    // 3. Her kanalda QUIT'i broadcast et
-    for (size_t i = 0; i < channels.size(); i++)
-    {
-        std::string channelName = channels[i];
-        
-        // Kanalı bul
-        if (!haschannel(channelName))
-            continue;
-            
-        Channel* channel = NULL;
-        for (size_t j = 0; j < _channels.size(); ++j)
-        {
-            if (_channels[j].getName() == channelName)
-            {
-                channel = &_channels[j];
-                break;
-            }
-        }
-        
-        if (channel == NULL)
-            continue;
-        
-        // Kanaldaki tüm üyelere QUIT mesajı gönder (kendisi hariç, tekrar göndermeden)
-        std::vector<size_t> members = channel->getMembers();
-        for (size_t m = 0; m < members.size(); ++m)
-        {
-            size_t memberFd = members[m];
-            
-            // Kendisine gönderme
-            if (memberFd == msg.fd)
-                continue;
-            
-            // Daha önce gönderildiyse tekrar gönderme
-            if (notifiedUsers.find(memberFd) != notifiedUsers.end())
-                continue;
-            
-            // QUIT mesajını gönder
-            send(memberFd, quitMsg.c_str(), quitMsg.length(), 0);
-            notifiedUsers.insert(memberFd);
-        }
-    }
+    // 3. Ortak kanallardaki kullanıcılara broadcast et (tekrar göndermeden)
+    broadcastToCommonChannels(this, cli, quitMsg, msg.fd);
     
     // 4. Kullanıcıyı tüm kanallardan çıkar ve boş kanalları sil
-    for (size_t i = 0; i < channels.size(); i++)
-    {
-        std::string channelName = channels[i];
-        
-        // Kanalı bul ve kullanıcıyı çıkar
-        for (size_t j = 0; j < _channels.size(); ++j)
-        {
-            if (_channels[j].getName() == channelName)
-            {
-                // Kullanıcıyı kanaldan çıkar
-                _channels[j].removeUser(msg.fd);
-                // Operator ise operator listesinden de çıkar
-                if (_channels[j].isOperator(msg.fd))
-                    _channels[j].removeOperator(msg.fd);
-                
-                // Kanal boş kaldıysa sil - DİKKAT: Iterator invalidation
-                if (_channels[j].getUserCount() == 0)
-                {
-                    _channels.erase(_channels.begin() + j);
-                    break; // Channel silindi, döngüden çık
-                }
-                break;
-            }
-        }
-    }
+    removeUserFromAllChannels(this, msg.fd);
+    cleanupEmptyChannels(this);
     
     // 5. ERROR mesajını kullanıcıya gönder (son mesaj)
     sendReply(msg.fd, "ERROR :Closing Link: " + host + " (" + quitMessage + ")\r\n");

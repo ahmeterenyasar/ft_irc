@@ -1,5 +1,6 @@
 #include "../../inc/client.hpp"
 #include "../../inc/server.hpp"
+#include "../../inc/command_helpers.hpp"
 
 // RFC 2812 - NOTICE command
 // Syntax: NOTICE <target>{,<target>} :<message>
@@ -9,7 +10,6 @@ void Server::noticeCommand(IRCMessage &msg)
 {
 	Channel	*channel;
 	size_t	targetFd;
-	bool	userFound;
 
 	Client &cli = _clients[msg.fd];
 	std::string nick;
@@ -35,47 +35,21 @@ void Server::noticeCommand(IRCMessage &msg)
 		{
 			if (!haschannel(target))
 				continue ;
-			channel = NULL;
-			for (size_t j = 0; j < _channels.size(); ++j)
-			{
-				if (_channels[j].getName() == target)
-				{
-					channel = &_channels[j];
-					break ;
-				}
-			}
+			channel = findChannel(this, target);
 			if (channel == NULL)
 				continue ;
 			if (!channel->hasUser(msg.fd))
 				continue ;
-			std::string noticeMsg = ":" + nick + "!" + cli.getUsername() + "@"
-				+ cli.getHostname() + " NOTICE " + target + " :" + message
-				+ "\r\n";
-			std::vector<size_t> members = channel->getMembers();
-			for (size_t m = 0; m < members.size(); ++m)
-			{
-				if (members[m] != msg.fd)
-					send(members[m], noticeMsg.c_str(), noticeMsg.length(), 0);
-			}
+			std::string noticeMsg = getUserPrefix(cli) + " NOTICE " + target + " :" + message + "\r\n";
+			broadcastToChannel(this, channel, noticeMsg, msg.fd);
 		}
 		else
 		{
-			targetFd = 0;
-			userFound = false;
-			std::map<size_t, Client>::iterator it;
-			for (it = _clients.begin(); it != _clients.end(); ++it)
-			{
-				if (it->second.getNickname() == target)
-				{
-					targetFd = it->first;
-					userFound = true;
-					break ;
-				}
-			}
-			if (!userFound)
+			Client* targetClient = findClientByNick(this, target, targetFd);
+			if (!targetClient)
 				continue ;
 
-			std::string noticeMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() + " NOTICE " + target + " :" + message + "\r\n";
+			std::string noticeMsg = getUserPrefix(cli) + " NOTICE " + target + " :" + message + "\r\n";
 			send(targetFd, noticeMsg.c_str(), noticeMsg.length(), 0);
 		}
 	}

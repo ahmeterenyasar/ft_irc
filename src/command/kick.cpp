@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 
 // RFC 2812 - KICK command
 // Syntax: KICK <channel> <user> [<comment>]
@@ -16,19 +17,12 @@ void Server::kickCommand(IRCMessage& msg)
     Client& cli = clientIt->second;
     std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
-    // 1. En az 2 parametre gerekli: kanal ve kullanıcı - ERR_NEEDMOREPARAMS (461)
-    if (msg.Parameters.size() < 2)
-    {
-        sendReply(msg.fd, ":server 461 " + nick + " KICK :Not enough parameters\r\n");
+    // Validation checks
+    if (!checkMinParams(this, msg, cli, 2, "KICK"))
         return;
-    }
-
-    // 2. Kayıt kontrolü - ERR_NOTREGISTERED (451)
-    if (!cli.isRegistered())
-    {
-        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
+    
+    if (!checkRegistered(this, msg, cli))
         return;
-    }
 
     // 3. Parametreleri al ve parse et
     std::vector<std::string> channels = split(msg.Parameters[0], ',');
@@ -58,54 +52,40 @@ void Server::kickCommand(IRCMessage& msg)
         }
 
         // 7. Kanalı bul
-        Channel* channel = NULL;
+        Channel* channel = findChannel(this, channelName);
+        if (channel == NULL)
+            continue;
+        
         size_t channelIndex = 0;
         for (size_t j = 0; j < _channels.size(); ++j)
         {
             if (_channels[j].getName() == channelName)
             {
-                channel = &_channels[j];
                 channelIndex = j;
                 break;
             }
         }
 
-        if (channel == NULL)
-            continue;
-
         // 8. KICK eden kullanıcı kanalda mı? - ERR_NOTONCHANNEL (442)
-        if (!channel->hasUser(msg.fd))
-        {
-            sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        if (!checkUserInChannel(this, msg, cli, channel, channelName))
             continue;
-        }
 
         // 9. KICK eden kullanıcı operator mı? - ERR_CHANOPRIVSNEEDED (482)
-        if (!channel->isOperator(msg.fd))
-        {
-            sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+        if (!checkChannelOperator(this, msg, cli, channel, channelName))
             continue;
-        }
 
         // 10. Atılacak kullanıcıyı bul
-        int targetFd = -1;
-        for (std::map<size_t, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-        {
-            if (it->second.getNickname() == targetUser)
-            {
-                targetFd = it->first;
-                break;
-            }
-        }
+        size_t targetFd = 0;
+        Client* targetClient = findClientByNick(this, targetUser, targetFd);
         
         // Kendini kicklemeye çalışıyor mu kontrol et (mantıksal hata)
-        if (targetFd == static_cast<int>(msg.fd))
+        if (targetFd == msg.fd)
         {
             sendReply(msg.fd, ":server 482 " + nick + " " + channelName + " :You cannot kick yourself\r\n");
             continue;
         }
 
-        if (targetFd == -1)
+        if (targetClient == NULL)
         {
             sendReply(msg.fd, ":server 401 " + nick + " " + targetUser + " :No such nick/channel\r\n");
             continue;
@@ -119,14 +99,10 @@ void Server::kickCommand(IRCMessage& msg)
         }
 
         // 12. KICK mesajını tüm kanal üyelerine broadcast et (atılan kullanıcı dahil!)
-        std::string kickMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() +
+        std::string kickMsg = getUserPrefix(cli) +
                               " KICK " + channelName + " " + targetUser + " :" + reason + "\r\n";
         
-        std::vector<size_t> members = channel->getMembers();
-        for (size_t j = 0; j < members.size(); ++j)
-        {
-            sendReply(members[j], kickMsg);
-        }
+        broadcastToChannel(this, channel, kickMsg, 0);
 
         // 13. Kullanıcıyı kanaldan çıkar
         channel->removeUser(targetFd);

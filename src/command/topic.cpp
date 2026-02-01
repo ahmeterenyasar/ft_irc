@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 
 // RFC 2812 - TOPIC command
 // Syntax: TOPIC <channel> [<topic>]
@@ -11,17 +12,11 @@ void Server::topicCommand(IRCMessage& msg)
     Client& cli = _clients[msg.fd];
     std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
-    if (msg.Parameters.empty())
-    {
-        sendReply(msg.fd, ":server 461 " + nick + " TOPIC :Not enough parameters\r\n");
+    if (!checkMinParams(this, msg, cli, 1, "TOPIC"))
         return;
-    }
 
-    if (!cli.isRegistered())
-    {
-        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
+    if (!checkRegistered(this, msg, cli))
         return;
-    }
 
     std::string channelName = msg.Parameters[0];
 
@@ -31,24 +26,12 @@ void Server::topicCommand(IRCMessage& msg)
         return;
     }
 
-    Channel* channel = NULL;
-    for (size_t i = 0; i < _channels.size(); ++i)
-    {
-        if (_channels[i].getName() == channelName)
-        {
-            channel = &_channels[i];
-            break;
-        }
-    }
-
+    Channel* channel = findChannel(this, channelName);
     if (channel == NULL)
         return;
 
-    if (!channel->hasUser(msg.fd))
-    {
-        sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+    if (!checkUserInChannel(this, msg, cli, channel, channelName))
         return;
-    }
 
     // TOPIC SORGULAMA
     // Sadece topic sorgusu mu?
@@ -95,12 +78,8 @@ void Server::topicCommand(IRCMessage& msg)
     channel->setTopic(newTopic);
 
     // TOPIC değişikliğini tüm kanal üyelerine broadcast et (değiştiren dahil!)
-    std::string topicMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() +
+    std::string topicMsg = getUserPrefix(cli) +
                            " TOPIC " + channelName + " :" + newTopic + "\r\n";
     
-    std::vector<size_t> members = channel->getMembers();
-    for (size_t i = 0; i < members.size(); ++i)
-    {
-        sendReply(members[i], topicMsg);
-    }
+    broadcastToChannel(this, channel, topicMsg, 0);
 }

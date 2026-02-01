@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 
 // RFC 2812 - MODE command
 // Channel modes: MODE <channel> [<modestring> [<mode arguments>...]]
@@ -11,21 +12,13 @@
 void Server::modeCommand(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];
-    std::string nick;
-    if (cli.getNickname().empty())
-        nick = "*";
-    else
-        nick = cli.getNickname();
-    if (msg.Parameters.empty())
-    {
-        sendReply(msg.fd, ":server 461 " + nick + " MODE :Not enough parameters\r\n");
+    std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
+    
+    if (!checkMinParams(this, msg, cli, 1, "MODE"))
         return;
-    }
-    if(cli.isRegistered() == false)
-    {
-        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
-        return;
-    } 
+    
+    if (!checkRegistered(this, msg, cli))
+        return; 
 
     std::string target = msg.Parameters[0];
     if (target.empty() || (target[0] != '#' && target[0] != '&'))
@@ -39,35 +32,24 @@ void Server::modeCommand(IRCMessage& msg)
         return;
     }
 
-    Channel* channel = NULL;
-    for (size_t i = 0; i < _channels.size(); ++i)
-    {
-        if (_channels[i].getName() == target)
-        {
-            channel = &_channels[i];
-            break;
-        }
-    }
+    Channel* channel = findChannel(this, target);
     if (channel == NULL)
     {
         sendReply(msg.fd, ":server 403 " + nick + " " + target + " :No such channel\r\n");
         return;
     }
-    if (!channel->hasUser(msg.fd))
-    {
-        sendReply(msg.fd, ":server 442 " + nick + " " + target + " :You're not on that channel\r\n");
+    
+    if (!checkUserInChannel(this, msg, cli, channel, target))
         return;
-    }
+    
     if (msg.Parameters.size() == 1)
     {
         sendReply(msg.fd, ":server 324 " + nick + " " + target + " " + channel->getModeString() + "\r\n");
         return;
     }
-    if (!channel->isOperator(msg.fd))
-    {
-        sendReply(msg.fd, ":server 482 " + nick + " " + target + " :You're not channel operator\r\n");
+    
+    if (!checkChannelOperator(this, msg, cli, channel, target))
         return;
-    }
     std::string modeString = msg.Parameters[1];
     bool adding = true;
     size_t paramIndex = 2;
@@ -82,26 +64,14 @@ void Server::modeCommand(IRCMessage& msg)
         else if (mode == 'i')
         {
             channel->setInviteOnly(adding);
-            std::string modeChange = prefix + " MODE " + target + " ";
-            if (adding)
-                modeChange += "+i\r\n";
-            else
-                modeChange += "-i\r\n";
-            std::vector<size_t> members = channel->getMembers();
-            for (size_t j = 0; j < members.size(); j++)
-                sendReply(members[j], modeChange);
+            std::string modeChange = prefix + " MODE " + target + " " + (adding ? "+i" : "-i") + "\r\n";
+            broadcastToChannel(this, channel, modeChange, 0);
         }
         else if (mode == 't')
         {
             channel->setTopicRestricted(adding);
-            std::string modeChange = prefix + " MODE " + target + " ";
-            if (adding)
-                modeChange += "+t\r\n";
-            else
-                modeChange += "-t\r\n";
-            std::vector<size_t> members = channel->getMembers();
-            for (size_t j = 0; j < members.size(); j++)
-                sendReply(members[j], modeChange);
+            std::string modeChange = prefix + " MODE " + target + " " + (adding ? "+t" : "-t") + "\r\n";
+            broadcastToChannel(this, channel, modeChange, 0);
         }
         else if (mode == 'k')
         {

@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 #include <set>
 
 // RFC 2812 - NICK command
@@ -68,28 +69,7 @@ void Server::nickCommand(IRCMessage& msg)
         send(msg.fd, msgToSend.c_str(), msgToSend.length(), 0);
         
         // Ortak kanallardaki kullanıcılara bildir
-        std::set<size_t> notifiedUsers;
-        std::vector<std::string> channels = cli.getChannels();
-        
-        for (size_t i = 0; i < channels.size(); i++)
-        {
-            for (size_t j = 0; j < _channels.size(); ++j)
-            {
-                if (_channels[j].getName() == channels[i])
-                {
-                    std::vector<size_t> members = _channels[j].getMembers();
-                    for (size_t m = 0; m < members.size(); ++m)
-                    {
-                        if (members[m] != msg.fd && notifiedUsers.find(members[m]) == notifiedUsers.end())
-                        {
-                            send(members[m], msgToSend.c_str(), msgToSend.length(), 0);
-                            notifiedUsers.insert(members[m]);
-                        }
-                    }
-                    break;
-                }
-            }
-        }
+        broadcastToCommonChannels(this, cli, msgToSend, msg.fd);
     }
     cli.setNickname(newNick);
     if (cli.isAuthenticated() && !cli.getUsername().empty() && 

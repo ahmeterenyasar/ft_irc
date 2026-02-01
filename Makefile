@@ -12,7 +12,7 @@ SOURCES		= main.cpp src/client.cpp src/server.cpp src/debug.cpp src/utils.cpp sr
 			  src/command/pass.cpp src/command/nick.cpp src/command/user.cpp src/command/quit.cpp \
 			  src/command/kick.cpp src/command/invite.cpp src/command/topic.cpp src/command/mode.cpp \
 			  src/command/part.cpp src/command/commands.cpp src/command/join.cpp src/command/privmsg.cpp \
-			  src/command/notice.cpp 
+			  src/command/notice.cpp src/command/helpers.cpp 
 OBJECTS		= $(SOURCES:%.cpp=$(OBJDIR)/%.o)
 
 INCLUDES	= -I.

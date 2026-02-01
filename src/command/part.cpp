@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 
 
 
@@ -12,17 +13,11 @@ void Server::partCommand(IRCMessage& msg)
     Client& cli = _clients[msg.fd];
     std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
-    if (msg.Parameters.empty())
-    {
-        sendReply(msg.fd, ":server 461 " + nick + " PART :Not enough parameters\r\n");
+    if (!checkMinParams(this, msg, cli, 1, "PART"))
         return;
-    }
     
-    if (cli.isRegistered() == false)
-    {
-        sendReply(msg.fd, ":server 451 " + nick + " PART :You have not registered\r\n");
+    if (!checkRegistered(this, msg, cli))
         return;
-    }
     
     std::vector<std::string> channels = split(msg.Parameters[0], ',');
     std::string partMessage = "";
@@ -50,25 +45,14 @@ void Server::partCommand(IRCMessage& msg)
         }
         
         // Kanalı bul
-        Channel* channel = NULL;
-        for (size_t j = 0; j < _channels.size(); ++j)
-        {
-            if (_channels[j].getName() == channelName)
-            {
-                channel = &_channels[j];
-                break;
-            }
-        }
+        Channel* channel = findChannel(this, channelName);
         
         if (channel == NULL)
             continue;
         
         // Kullanıcı bu kanalda mı kontrolü
-        if (!channel->hasUser(msg.fd))
-        {
-            sendReply(msg.fd, ":server 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        if (!checkUserInChannel(this, msg, cli, channel, channelName))
             continue;
-        }
         
         // Üyeleri önce al (kanaldan çıkmadan önce)
         std::vector<size_t> members = channel->getMembers();
@@ -76,9 +60,9 @@ void Server::partCommand(IRCMessage& msg)
         // PART mesajını tüm kanal üyelerine broadcast et
         std::string partMsg;
         if (!partMessage.empty())
-            partMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() + " PART " + channelName + " :" + partMessage + "\r\n";
+            partMsg = getUserPrefix(cli) + " PART " + channelName + " :" + partMessage + "\r\n";
         else
-            partMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() + " PART " + channelName + "\r\n";
+            partMsg = getUserPrefix(cli) + " PART " + channelName + "\r\n";
         
         for (size_t m = 0; m < members.size(); ++m)
         {

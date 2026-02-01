@@ -1,5 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
+#include "../../inc/command_helpers.hpp"
 
 // RFC 2812 - PRIVMSG command
 // Syntax: PRIVMSG <target>{,<target>} :<message>
@@ -13,7 +14,7 @@ void Server::privmsgCommand(IRCMessage& msg)
     std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
     // 1. ERR_NORECIPIENT (411)
-    if (msg.Parameters.empty())
+    if (!checkMinParams(this, msg, cli, 1, "PRIVMSG"))
     {
         sendReply(msg.fd, ":server 411 " + nick + " :No recipient given (PRIVMSG)\r\n");
         return;
@@ -26,12 +27,8 @@ void Server::privmsgCommand(IRCMessage& msg)
         return;
     }
 
-    // 3. Kayıt kontrolü - ERR_NOTREGISTERED (451)
-    if (!cli.isRegistered())
-    {
-        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered\r\n");
+    if (!checkRegistered(this, msg, cli))
         return;
-    }
 
     // 4. Parametreleri al
     std::string targets = msg.Parameters[0];
@@ -61,15 +58,7 @@ void Server::privmsgCommand(IRCMessage& msg)
             }
 
             // 9. Kanalı bul
-            Channel* channel = NULL;
-            for (size_t j = 0; j < _channels.size(); ++j)
-            {
-                if (_channels[j].getName() == target)
-                {
-                    channel = &_channels[j];
-                    break;
-                }
-            }
+            Channel* channel = findChannel(this, target);
 
             if (channel == NULL)
                 continue;
@@ -82,17 +71,10 @@ void Server::privmsgCommand(IRCMessage& msg)
             }
 
             // 11. Mesajı kanal üyelerine broadcast et (gönderen hariç)
-            std::string privmsgMsg = ":" + nick + "!" + cli.getUsername() + "@" + cli.getHostname() +
+            std::string privmsgMsg = getUserPrefix(cli) +
                                      " PRIVMSG " + target + " :" + message + "\r\n";
             
-            std::vector<size_t> members = channel->getMembers();
-            for (size_t j = 0; j < members.size(); ++j)
-            {
-                if (members[j] != msg.fd) // Gönderene echo yapma!
-                {
-                    sendReply(members[j], privmsgMsg);
-                }
-            }
+            broadcastToChannel(this, channel, privmsgMsg, msg.fd);
         }
         else
         {
