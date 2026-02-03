@@ -77,21 +77,6 @@ Channel* findChannel(Server* server, const std::string& channelName)
     return NULL;
 }
 
-// ========== MESSAGE FORMATTING HELPERS ==========
-
-std::string getUserPrefix(const Client& cli)
-{
-    std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
-    std::string user = cli.getUsername().empty() ? "*" : cli.getUsername();
-    std::string host = cli.getHostname().empty() ? "localhost" : cli.getHostname();
-    return ":" + nick + "!" + user + "@" + host;
-}
-
-std::string buildMessage(const std::string& prefix, const std::string& command, const std::string& params)
-{
-    return prefix + " " + command + " " + params + "\r\n";
-}
-
 // ========== BROADCAST HELPERS ==========
 
 void broadcastToChannel(Server* server, Channel* channel, const std::string& message, size_t excludeFd)

@@ -36,7 +36,7 @@ void Server::start_sockaddr_struct()
 
 void Server::socket_initialization()
 {
-    _server_fd = socket(AF_INET, SOCK_STREAM, 0); // TCP socket
+    _server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_server_fd < 0) {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
@@ -148,8 +148,12 @@ void Server::accept_new_connection()
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &client_address.sin_addr, client_ip, INET_ADDRSTRLEN);
         _clients[client_fd].setHostname(client_ip);
+        
+        sendSimpleWelcome(_pollFds.back().fd); 
     }
-    sendSimpleWelcome(_pollFds.back().fd); // Yeni bağlanan istemciye hoş geldin mesajı gönder
+    // Yeni bağlanan istemciye hoş geldin mesajı gönder
+    // burda olmaması gerkeiyor olabilir
+    // sendSimpleWelcome(_pollFds.back().fd); 
 }
 
 void Server::disconnectClient(size_t index) 
@@ -211,7 +215,6 @@ void Server::client_read(size_t fd, size_t index)
         disconnectClient(index);
         return;
     }
-    // Buffer overflow koruması - maksimum 4096 byte
     if (_inbuf[fd].size() + n > 4096)
     {
         _inbuf[fd].clear();
@@ -229,7 +232,6 @@ void Server::client_read(size_t fd, size_t index)
             line.erase(line.size() - 1);
         buffer.erase(0, pos + 1);
         
-        // TEST
         IRCMessage msg = parser(line, fd);
         executeCommand(msg);
     }
@@ -253,27 +255,31 @@ void Server::run()
             perror("Poll failed");
             break;
         }
-        for (size_t i = 0; i < _pollFds.size(); ++i )
+        for (size_t i = 0; i < _pollFds.size(); ++i)
         {
             if (_pollFds[i].revents == 0)
                 continue;
-            if (_pollFds[i].revents & POLLIN)
+
+            /*
+            kullanıcı hiç mesaj atmadan Ctrl+C yapıp çıksaydı, 
+            POLLIN (okunacak veri) oluşmadığı için sunucun o 
+            kişinin çıktığını asla anlamayacaktı. 
+            Şimdi birbirinden bağımsız kontrol ediliyor.
+            */
+            if (_pollFds[i].fd == _server_fd)
             {
-                if (_pollFds[i].fd == _server_fd)
+                if (_pollFds[i].revents & POLLIN)
+                    accept_new_connection();
+            }
+            else
+            {
+                if (_pollFds[i].revents & POLLIN)
+                    client_read(_pollFds[i].fd, i);
+
+                if (_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
                 {
-                    if (_pollFds[i].revents & POLLIN)
-                        accept_new_connection();
-                }
-                else
-                {
-                    if(_pollFds[i].revents & POLLIN)
-                        client_read(_pollFds[i].fd, i); // İstemciden veri okuma
-                    if(_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
-                    {
-                        disconnectClient(i); // İstemci bağlantısını kesme
-                        --i;
-                        continue;
-                    }
+                    disconnectClient(i);
+                    i--;
                 }
             }
         }

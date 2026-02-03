@@ -7,47 +7,41 @@
 void Server::cmdUser(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];
-    std::string userName;
+    
+    std::string nick = cli.getNickname().empty() ? "*" : cli.getNickname();
 
-    if (cli.getUsername().empty())
-        userName = "*";
-    else
-        userName = cli.getUsername();
-
-    // Check if authenticated (PASS required first)
     if (!cli.isAuthenticated())
     {
-        sendReply(msg.fd, ":server 451 " + userName + " :You have not registered");
-        return;
-    }
-    // ERR_NEEDMOREPARAMS (461)
-    if (msg.Parameters.size() < 4)
-    {
-        sendReply(msg.fd, ":server 461 " + userName + " USER :Not enough parameters");
+        sendReply(msg.fd, ":server 451 " + nick + " :You have not registered");
         return;
     }
 
-    // ERR_ALREADYREGISTRED (462)
+    if (msg.Parameters.size() < 4)
+    {
+        sendReply(msg.fd, ":server 461 " + nick + " USER :Not enough parameters");
+        return;
+    }
+
     if (cli.isRegistered())
     {
-        sendReply(msg.fd, ":server 462 " + userName + " :You may not reregister");
+        sendReply(msg.fd, ":server 462 " + nick + " :You may not reregister");
         return;
     }
 
     cli.setUsername(msg.Parameters[0]);
     cli.setRealname(msg.Parameters[3]);
-
-    if (!cli.getUsername().empty())
+    
+    if (!cli.getNickname().empty() && !cli.getUsername().empty())
     {
         cli.setRegistered(true);
-        userName = cli.getUsername();
         
-        // Use client's actual hostname or IP
+        std::string finalNick = cli.getNickname();
+        std::string finalUser = cli.getUsername();
         std::string host = cli.getHostname().empty() ? "localhost" : cli.getHostname();
 
-        sendReply(msg.fd, ":server 001 " + userName + " :Welcome to the Internet Relay Network " + userName + "!" + cli.getUsername() + "@" + host);
-        sendReply(msg.fd, ":server 002 " + userName + " :Your host is server, running version 1.0");
-        sendReply(msg.fd, ":server 003 " + userName + " :This server was created " + std::string(__DATE__));
-        sendReply(msg.fd, ":server 004 " + userName + " server 1.0 o o");
+        sendReply(msg.fd, ":server 001 " + finalNick + " :Welcome to the Internet Relay Network " + finalNick + "!" + finalUser + "@" + host);
+        sendReply(msg.fd, ":server 002 " + finalNick + " :Your host is ft_irc, running version 1.0");
+        sendReply(msg.fd, ":server 003 " + finalNick + " :This server was created " + std::string(__DATE__));
+        sendReply(msg.fd, ":server 004 " + finalNick + " ft_irc 1.0 o o");
     }
 }

@@ -14,10 +14,6 @@ bool checkUserInChannel(Server* server, IRCMessage& msg, const Client& cli, Chan
 Client* findClientByNick(Server* server, const std::string& nickname, size_t& fd);
 Channel* findChannel(Server* server, const std::string& channelName);
 
-// Message formatting helpers
-std::string getUserPrefix(const Client& cli);
-std::string buildMessage(const std::string& prefix, const std::string& command, const std::string& params);
-
 // Broadcast helpers
 void broadcastToChannel(Server* server, Channel* channel, const std::string& message, size_t excludeFd = 0);
 void broadcastToCommonChannels(Server* server, const Client& cli, const std::string& message, size_t senderFd);
