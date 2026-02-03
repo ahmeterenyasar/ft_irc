@@ -5,6 +5,7 @@ IRCMessage::IRCMessage() : Prefix(""), Command(""), fd(0) {
 }
 
 //[:prefix] COMMAND [param1 param2 ...] [:trailing param]
+//:nick!user@localhost      PRIVMSG     #42          :Hello IRC World
 IRCMessage parser(std::string line, size_t fd)
 {
     IRCMessage msg;
