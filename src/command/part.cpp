@@ -30,34 +30,28 @@ void Server::partCommand(IRCMessage& msg)
     {
         std::string channelName = channels[i];
         
-        // Kanal adı validasyonu
         if (channelName.empty() || channelName[0] != '#')
         {
             sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
             continue;
         }
         
-        // Kanal var mı kontrolü
         if (!haschannel(channelName))
         {
             sendReply(msg.fd, ":server 403 " + nick + " " + channelName + " :No such channel");
             continue;
         }
         
-        // Kanalı bul
         Channel* channel = findChannel(this, channelName);
         
         if (channel == NULL)
             continue;
         
-        // Kullanıcı bu kanalda mı kontrolü
         if (!checkUserInChannel(this, msg, cli, channel, channelName))
             continue;
         
-        // Üyeleri önce al (kanaldan çıkmadan önce)
         std::vector<size_t> members = channel->getMembers();
         
-        // PART mesajını tüm kanal üyelerine broadcast et
         std::string hostname = cli.getHostname().empty() ? "localhost" : cli.getHostname();
         std::string partMsg;
         if (!partMessage.empty())
@@ -70,14 +64,11 @@ void Server::partCommand(IRCMessage& msg)
             send(members[m], partMsg.c_str(), partMsg.length(), 0);
         }
         
-        // Kullanıcıyı kanaldan çıkar
         channel->removeUser(msg.fd);
-        // Eğer operator ise operator listesinden de çıkar
         if (channel->isOperator(msg.fd))
             channel->removeOperator(msg.fd);
         cli.leaveChannel(channelName);
         
-        // Kanal boş kaldıysa kanalı sil
         if (channel->getUserCount() == 0)
         {
             for (size_t k = 0; k < _channels.size(); ++k)
