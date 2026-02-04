@@ -6,106 +6,135 @@
 #include <unistd.h>
 #include <vector>
 #include <sstream>
+#include <csignal>
+#include <cstdlib>
+#include <cerrno>
 
-// Ayarlar
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 6667
-#define BOT_PASS "1234"      // Sunucunun şifresi
-#define BOT_NICK "SelamBot" // Botun adı
+#define BOT_PASS "123"
+#define BOT_NICK "SelamBot"
 
-// Yardımcı fonksiyon: Sunucuya mesaj göndermek için
+bool isRunning = true;
+int sock = -1;
+
+void signalHandler(int signum) {
+    (void)signum;
+    std::cout << "\nInterrupt signal received. Shutting down..." << std::endl;
+    isRunning = false;
+}
+
 void sendRaw(int socket, std::string msg) {
-    msg += "\r\n"; // IRC komutları \r\n ile bitmeli
-    send(socket, msg.c_str(), msg.length(), 0);
-    std::cout << "Sent: " << msg; // Loglamak için
+    msg += "\r\n";
+    if (send(socket, msg.c_str(), msg.length(), 0) == -1) {
+        std::cerr << "Send failed!" << std::endl;
+    }
 }
 
 int main(int argc, char const *argv[]) {
-    // Port numarasını argüman olarak alabiliriz (Opsiyonel)
     int port = SERVER_PORT;
-    if (argc == 2)
-        port = atoi(argv[1]);
+    std::string password = BOT_PASS;
 
-    // 1. Soket Oluşturma
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    // Argüman kontrolünü iyileştirdik
+    if (argc >= 2)
+        port = atoi(argv[1]);
+    if (argc >= 3)
+        password = argv[2];
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));       // Yapıyı sıfırla
+    sa.sa_handler = signalHandler;    // Handler fonksiyonunu ata
+    sigemptyset(&sa.sa_mask);         // Maskeyi temizle
+    sa.sa_flags = 0;                  // ÖNEMLİ: SA_RESTART bayrağını VERMİYORUZ.
+                                      // Bu sayede recv() sinyal gelince kesilecek.
+    
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        std::cerr << "Error setting up signal handler" << std::endl;
+        return 1;
+    }
+
+    sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
         std::cerr << "Socket creation error" << std::endl;
         return 1;
     }
 
-    // 2. Sunucuya Bağlanma
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
-    inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr);
-
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        std::cerr << "Connection failed" << std::endl;
+    if (inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr) <= 0) {
+        std::cerr << "Invalid address" << std::endl;
         return 1;
     }
 
-    std::cout << "Connected to server!" << std::endl;
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        std::cerr << "Connection failed" << std::endl;
+        close(sock);
+        return 1;
+    }
 
-    // 3. Giriş İşlemleri (Handshake)
-    // Sırasıyla: PASS -> NICK -> USER
-    sendRaw(sock, "PASS " + std::string(BOT_PASS));
+    std::cout << "Connected to server! Bot starting..." << std::endl;
+
+    // Handshake
+    sendRaw(sock, "PASS " + password);
     sendRaw(sock, "NICK " + std::string(BOT_NICK));
     sendRaw(sock, "USER botuser 0 * :Bot Description");
 
-    // 4. Dinleme Döngüsü
-    char buffer[4096];
-    while (true) {
-        memset(buffer, 0, 4096);
-        int bytesRead = recv(sock, buffer, 4096, 0);
-        if (bytesRead <= 0) break;
+    char tempBuffer[4096];
+    std::string incompleteData = "";
 
-        std::string data(buffer);
-        std::cout << "Received: " << data; // Gelen veriyi gör
+    while (isRunning) {
+        memset(tempBuffer, 0, 4096);
+        int bytesRead = recv(sock, tempBuffer, 4095, 0);
 
-        // Satır satır işleme (buffer birden fazla satır içerebilir)
-        std::stringstream ss(data);
-        std::string line;
-        
-        while (std::getline(ss, line)) {
-            if (!line.empty() && line[line.length()-1] == '\r')
-                line.erase(line.length()-1); // \r temizle
+        if (bytesRead < 0) {
+            // Sinyal yakalandığında buraya düşecek
+            if (errno == EINTR) {
+                // Sinyal nedeniyle kesildi, isRunning false olduğu için döngüden çıkacak
+                break; 
+            }
+            std::cerr << "Recv error" << std::endl;
+            break;
+        }
+        if (bytesRead == 0) {
+            std::cout << "Server closed connection." << std::endl;
+            break;
+        }
 
-            // A. PING Kontrolü (Sunucu "Ölmedin dimi?" derse PONG dönmeliyiz)
+        incompleteData.append(tempBuffer);
+        size_t pos = 0;
+        while ((pos = incompleteData.find("\r\n")) != std::string::npos) {
+            std::string line = incompleteData.substr(0, pos);
+            incompleteData.erase(0, pos + 2);
+
+            std::cout << "Received: " << line << std::endl;
+
             if (line.find("PING") == 0) {
                 std::string token = line.substr(5);
                 sendRaw(sock, "PONG " + token);
             }
 
-            // B. Mesaj Kontrolü (PRIVMSG)
-            // Format: :Nick!User@Host PRIVMSG #kanal :Mesajın kendisi
-            size_t privmsgPos = line.find(" PRIVMSG ");
-            if (privmsgPos != std::string::npos) {
-                
-                // Gönderen kişinin Nick'ini bul (:Nick!...)
+            if (line.find(" PRIVMSG ") != std::string::npos) {
                 size_t exclamPos = line.find("!");
-                std::string senderNick = line.substr(1, exclamPos - 1);
-
-                // Mesajın içeriğini bul (: işaretinden sonrası)
-                size_t colonPos = line.find(" :", privmsgPos);
-                if (colonPos != std::string::npos) {
-                    std::string messageContent = line.substr(colonPos + 2);
-                    
-                    // Kanalı veya hedefi bul
-                    // PRIVMSG <hedef> :mesaj
+                size_t privmsgPos = line.find(" PRIVMSG ");
+                
+                if (exclamPos != std::string::npos && privmsgPos != std::string::npos) {
+                    std::string senderNick = line.substr(1, exclamPos - 1);
                     size_t targetStart = privmsgPos + 9;
-                    size_t targetEnd = colonPos;
-                    std::string target = line.substr(targetStart, targetEnd - targetStart);
+                    size_t msgStart = line.find(" :", targetStart);
+                    
+                    if (msgStart != std::string::npos) {
+                        std::string target = line.substr(targetStart, msgStart - targetStart);
+                        std::string messageContent = line.substr(msgStart + 2);
+                        std::string replyTarget = (target[0] == '#') ? target : senderNick;
 
-                    // Eğer özelden yazıldıysa cevap Nick'e, kanaldan yazıldıysa Kanala dönsün
-                    std::string replyTarget = (target[0] == '#') ? target : senderNick;
-
-                    // C. "Selam" Kelimesini Ara (Büyük/Küçük harf duyarlılığı olmadan bakmak daha iyi olur ama basit tutalım)
-                    if (messageContent.find("Selam") != std::string::npos || 
-                        messageContent.find("selam") != std::string::npos) {
-                        
-                        // CEVAP VER!
-                        std::string reply = "PRIVMSG " + replyTarget + " :Merhaba " + senderNick + ", nasılsın?";
-                        sendRaw(sock, reply);
+                        if (senderNick != BOT_NICK) {
+                            if (messageContent.find("Selam") != std::string::npos || 
+                                messageContent.find("selam") != std::string::npos) {
+                                std::string reply = "PRIVMSG " + replyTarget + " :Merhaba " + senderNick + ", nasılsın?";
+                                sendRaw(sock, reply);
+                            }
+                        }
                     }
                 }
             }
@@ -113,5 +142,6 @@ int main(int argc, char const *argv[]) {
     }
 
     close(sock);
+    std::cout << "Bot stopped cleanly." << std::endl;
     return 0;
 }

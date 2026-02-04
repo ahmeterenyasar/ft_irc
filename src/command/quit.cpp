@@ -36,7 +36,7 @@ void Server::quitCommand(IRCMessage& msg)
     // 7. Bağlantıyı kapat ve pollfd'yi temizle
     for (size_t i = 0; i < _pollFds.size(); i++)
     {
-        if (_pollFds[i].fd == msg.fd)
+        if (_pollFds[i].fd == static_cast<int>(msg.fd))
         {
             close(_pollFds[i].fd);
             _pollFds.erase(_pollFds.begin() + i);
