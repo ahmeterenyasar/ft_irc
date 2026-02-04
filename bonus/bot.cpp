@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   bot.cpp                                            :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ayasar <ayasar@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/02/04 16:44:13 by ayasar            #+#    #+#             */
+/*   Updated: 2026/02/04 16:45:10 by ayasar           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -124,7 +136,12 @@ int main(int argc, char const *argv[]) {
                         std::string replyTarget = (target[0] == '#') ? target : senderNick;
 
                         if (senderNick != BOT_NICK) {
-                            if (messageContent.find("Selam") != std::string::npos || 
+                            if (messageContent.length() > 1 && messageContent[0] == '\x01' && messageContent.find("PING") == 1) {
+                                std::string reply = "NOTICE " + senderNick + " :" + messageContent;
+                                sendRaw(sock, reply);
+                                std::cout << "CTCP PING handled for " << senderNick << std::endl;
+                            }
+                            else if (messageContent.find("Selam") != std::string::npos || 
                                 messageContent.find("selam") != std::string::npos) {
                                 std::string reply = "PRIVMSG " + replyTarget + " :Merhaba " + senderNick + ", nasılsın?";
                                 sendRaw(sock, reply);

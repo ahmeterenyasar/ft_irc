@@ -13,19 +13,52 @@ This project delves deep into network programming, TCP/IP protocols, and socket 
 * **Non-Blocking I/O:** Uses `poll()` to manage all socket operations (read/write/listen) in a single thread.
 * **Multi-Client Support:** Handles multiple simultaneous connections without hanging.
 * **Channel Operations:** Users can join channels, send messages to the channel, and private message other users.
-* **Operator Privileges:** Includes specific commands for channel operators:
-* `KICK`: Eject a client from the channel.
-* `INVITE`: Invite a client to a channel.
-* `TOPIC`: Change or view the channel topic.
-* `MODE`: Change channel modes.
 
+## Implemented Commands
 
-* **Channel Modes:** Implemented specific modes as required:
-* `i`: Invite-only channel.
-* `t`: Restrict TOPIC command to operators.
-* `k`: Set/remove channel key (password).
-* `o`: Give/take operator privilege.
-* `l`: Set/remove user limit.
+### Authentication & Registration
+* **PASS** - Set connection password (must be sent before NICK/USER)
+* **NICK** - Set or change user nickname
+* **USER** - Set username, hostname, and realname
+* **CAP** - Capability negotiation (for modern IRC clients)
+
+### Channel Operations
+* **JOIN** - Join a channel or create a new one
+* **PART** - Leave a channel
+* **TOPIC** - View or change channel topic
+* **INVITE** - Invite a user to an invite-only channel
+* **KICK** - Remove a user from a channel (operator only)
+* **MODE** - Change channel or user modes
+
+### Communication
+* **PRIVMSG** - Send a private message to a user or channel
+* **NOTICE** - Send a notice (similar to PRIVMSG but without auto-reply)
+
+### Information
+* **WHO** - Get information about users
+* **LIST** - List all channels and their topics
+
+### Connection
+* **PING** - Test connection (server responds with PONG)
+* **QUIT** - Disconnect from the server
+
+### Channel Modes
+
+The following channel modes are supported:
+
+* **+i** / **-i** - Set/unset invite-only channel
+* **+t** / **-t** - Set/unset topic restriction (only operators can change)
+* **+k <key>** / **-k** - Set/remove channel password
+* **+o <nick>** / **-o <nick>** - Give/remove operator privileges
+* **+l <limit>** / **-l** - Set/remove user limit
+
+**Example usage:**
+```bash
+/MODE #channel +i          # Make channel invite-only
+/MODE #channel +k password # Set channel password
+/MODE #channel +o username # Give operator status
+/MODE #channel +l 10       # Set user limit to 10
+```
 
 
 
@@ -80,7 +113,37 @@ nc -C 127.0.0.1 6667
 
 ```
 
+## Bonus Features
+
+### IRC Bot
+
+In addition to the core IRC server functionality, we have implemented a bonus IRC bot that can:
+
+* **Automatically respond to user commands** in channels or private messages
+* **Provide helpful information** about server commands and usage
+* **Execute custom commands** with the `/bot` prefix
+
+#### Bot Usage
+
+1. **Compile the bot:**
+```bash
+make bonus
+
+./bot <port> <password> 
+```
+
+
+
 ## Resources
+
+### AI Usage
+
+AI assistance was used for the following purposes:
+* **Code documentation**: Generating comments and function descriptions.
+* **Debugging**: Identifying potential issues in network socket handling.
+* **Learning**: Understanding IRC protocol specifications and poll() usage.
+
+No AI-generated code was directly copied into the project without understanding and modification.
 
 ### References
 
