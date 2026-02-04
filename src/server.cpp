@@ -1,7 +1,6 @@
 #include "../inc/server.hpp"
 #include "../inc/client.hpp"
 
-// Global flag for signal handling
 bool Server::_signalReceived = false;
 
 Server::Server() : _server_fd(-1), _port(0), _password(""), _isShutdown(false) {}
@@ -91,8 +90,8 @@ void Server::server_listen()
 void  Server::init() 
 {
     socket_initialization();
-    socket_configuration(); // setsocketopt (bind fail önlemek için ve fcntl ile non-blocking)
-    start_sockaddr_struct(); // Initialize sockaddr_in structure
+    socket_configuration();
+    start_sockaddr_struct();
     server_bind();
     server_listen();
 }
@@ -100,15 +99,14 @@ void  Server::init()
 void Server::init_run()
 {
     struct pollfd serverPollFd;
-    serverPollFd.fd = _server_fd; // Sunucu soket dosya tanıtıcısı
-    serverPollFd.events = POLLIN; // Gelen bağlantılar için dinle
-    serverPollFd.revents = 0; // Başlangıçta olay yok
-    _pollFds.push_back(serverPollFd); // Sunucu soketini pollFds vektörüne ekler
+    serverPollFd.fd = _server_fd;
+    serverPollFd.events = POLLIN;
+    serverPollFd.revents = 0;
+    _pollFds.push_back(serverPollFd);
 }
 
 void Server::sendSimpleWelcome(int clientFd)
 {
-    // RFC 2812: Send NOTICE to unauthenticated clients
     std::string welcomeMsg;
     
     welcomeMsg = "NOTICE AUTH :*** Looking up your hostname...\r\n";
@@ -125,48 +123,42 @@ void Server::accept_new_connection()
     while(41)
     {
         struct sockaddr_in client_address;
-        socklen_t client_len = sizeof(client_address); // İstemci adres uzunluğu
-        int client_fd = accept(_server_fd, (struct sockaddr*)&client_address, &client_len); // Yeni bağlantıyı kabul et
+        socklen_t client_len = sizeof(client_address);
+        int client_fd = accept(_server_fd, (struct sockaddr*)&client_address, &client_len); 
         if (client_fd < 0) 
         {
             if (errno == EWOULDBLOCK || errno == EAGAIN)
-                break; // Tüm bağlantılar kabul edildi
+                break;
             perror("Accept failed");
             break;
         } 
-        int flags = fcntl(client_fd, F_GETFL, 0);  // Mevcut bayrakları al
+        int flags = fcntl(client_fd, F_GETFL, 0);
         if (flags != -1) 
             fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
-        pollfd p; // Yeni pollfd yapısı
-        p.fd = client_fd; // Yeni istemci soket dosya tanıtıcısı
-        p.events = POLLIN; // Gelen veriler için dinle
-        p.revents = 0; // Başlangıçta olay yok
-        _pollFds.push_back(p); // Yeni istemci soketini pollFds vektörüne ekle
-        _clients[client_fd] = Client(client_fd); // Yeni Client nesnesi oluştur ve ekle
+        pollfd p;
+        p.fd = client_fd;
+        p.events = POLLIN;
+        p.revents = 0;
+        _pollFds.push_back(p);
+        _clients[client_fd] = Client(client_fd);
         
-        // Get client IP address
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &client_address.sin_addr, client_ip, INET_ADDRSTRLEN);
         _clients[client_fd].setHostname(client_ip);
         
         sendSimpleWelcome(_pollFds.back().fd); 
     }
-    // Yeni bağlanan istemciye hoş geldin mesajı gönder
-    // burda olmaması gerkeiyor olabilir
-    // sendSimpleWelcome(_pollFds.back().fd); 
 }
 
 void Server::disconnectClient(size_t index) 
 {
-    if (index >= _pollFds.size())// geçersiz indeks
+    if (index >= _pollFds.size())
         return;
-    int client_fd = _pollFds[index].fd; // İstemci dosya tanıtıcısı
+    int client_fd = _pollFds[index].fd;
     
-    // Client'ı _clients map'inden bul
     std::map<size_t, Client>::iterator clientIt = _clients.find(client_fd);
     if (clientIt != _clients.end())
     {
-        // Kullanıcının tüm kanallardan çıkmasını sağla
         std::vector<std::string> channels = clientIt->second.getChannels();
         for (size_t i = 0; i < channels.size(); ++i)
         {
@@ -178,7 +170,6 @@ void Server::disconnectClient(size_t index)
                     if (_channels[j].isOperator(client_fd))
                         _channels[j].removeOperator(client_fd);
                     
-                    // Boş kanalı sil
                     if (_channels[j].getUserCount() == 0)
                     {
                         _channels.erase(_channels.begin() + j);
@@ -188,13 +179,12 @@ void Server::disconnectClient(size_t index)
                 }
             }
         }
-        // Client'ı sil
         _clients.erase(clientIt);
     }
     
-    close(client_fd); // İstemci soketini kapat
-    _pollFds.erase(_pollFds.begin() + index); // pollFds vektöründen kaldır
-    _inbuf.erase(client_fd); // İstemci verilerini sil
+    close(client_fd);
+    _pollFds.erase(_pollFds.begin() + index);
+    _inbuf.erase(client_fd);
 }
 
 void Server::client_read(size_t fd, size_t index)
@@ -202,7 +192,7 @@ void Server::client_read(size_t fd, size_t index)
     char buf[512];
     std::memset(buf, 0, sizeof(buf));
 
-    ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0); // -1 for null terminator
+    ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0);
     if (n == 0)
     {
         disconnectClient(index);
@@ -259,13 +249,6 @@ void Server::run()
         {
             if (_pollFds[i].revents == 0)
                 continue;
-
-            /*
-            kullanıcı hiç mesaj atmadan Ctrl+C yapıp çıksaydı, 
-            POLLIN (okunacak veri) oluşmadığı için sunucun o 
-            kişinin çıktığını asla anlamayacaktı. 
-            Şimdi birbirinden bağımsız kontrol ediliyor.
-            */
             if (_pollFds[i].fd == _server_fd)
             {
                 if (_pollFds[i].revents & POLLIN)
@@ -285,7 +268,6 @@ void Server::run()
         }
     }
     
-    // Graceful shutdown when signal received
     std::cout << "\nPerforming graceful shutdown..." << std::endl;
     shutdown();
 }
@@ -300,7 +282,7 @@ std::string Server::getUserList(const Channel& channel) const
         size_t fd = members[i];
         std::map<size_t, Client>::const_iterator it = _clients.find(fd);
         if (it == _clients.end())
-            continue; // FD bulunamazsa atla
+            continue;
         
         const Client& cli = it->second;
         std::string nick = cli.getNickname();
@@ -315,7 +297,6 @@ std::string Server::getUserList(const Channel& channel) const
     return userList;
 }
 
-// Signal handler
 void Server::signalHandler(int signum)
 {
     (void)signum;
@@ -323,16 +304,14 @@ void Server::signalHandler(int signum)
     std::cout << "\nShutdown signal received..." << std::endl;
 }
 
-// Graceful shutdown
 void Server::shutdown()
 {
     if (_isShutdown)
-        return; // Already shutdown
+        return;
     _isShutdown = true;
     
     std::cout << "Shutting down server..." << std::endl;
     
-    // Send QUIT message to all connected clients
     std::map<size_t, Client>::iterator it = _clients.begin();
     while (it != _clients.end())
     {
@@ -343,13 +322,11 @@ void Server::shutdown()
         ++it;
     }
     
-    // Clear all data structures
     _clients.clear();
     _channels.clear();
     _inbuf.clear();
     _pollFds.clear();
     
-    // Close server socket
     if (_server_fd >= 0)
     {
         close(_server_fd);

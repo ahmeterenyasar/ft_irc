@@ -1,9 +1,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/client.hpp"
 
-// RFC 2812 - USER command
-// Syntax: USER <username> <mode> <unused> :<realname>
-// Numeric replies: ERR_NEEDMOREPARAMS (461), ERR_ALREADYREGISTRED (462)
 void Server::cmdUser(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];

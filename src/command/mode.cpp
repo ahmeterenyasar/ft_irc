@@ -2,13 +2,6 @@
 #include "../../inc/client.hpp"
 #include "../../inc/command_helpers.hpp"
 
-// RFC 2812 - MODE command
-// Channel modes: MODE <channel> [<modestring> [<mode arguments>...]]
-// User modes: MODE <nickname> [<modestring>]
-// Numeric replies: ERR_NEEDMOREPARAMS (461), ERR_CHANOPRIVSNEEDED (482),
-//                  ERR_NOSUCHNICK (401), ERR_NOSUCHCHANNEL (403),
-//                  ERR_UNKNOWNMODE (472), RPL_CHANNELMODEIS (324),
-//                  RPL_UMODEIS (221)
 void Server::modeCommand(IRCMessage& msg)
 {
     Client& cli = _clients[msg.fd];
@@ -138,7 +131,6 @@ void Server::modeCommand(IRCMessage& msg)
             }  
             else
             {
-                // Son operator'ı kaldırmaya çalışıyor mu kontrol et
                 std::vector<size_t> operators = channel->getOperators();
                 if (operators.size() == 1 && channel->isOperator((size_t)targetFd))
                 {
@@ -169,7 +161,6 @@ void Server::modeCommand(IRCMessage& msg)
                     sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :Invalid user limit. Must be a positive integer");
                     continue;
                 }
-                // Çok büyük limit kontrolü (max 1000)
                 if (limit > 1000)
                 {
                     sendReply(msg.fd, ":server 696 " + nick + " " + target + " l * :User limit too large (max: 1000)");
@@ -190,8 +181,5 @@ void Server::modeCommand(IRCMessage& msg)
                     sendReply(members[j], modeChange);
             }
         }
-        // Bilinmeyen modları sessizce görmezden gel (KvIRC uyumluluğu için)
-        // else
-        //     sendReply(msg.fd, ":server 472 " + nick + " " + std::string(1, mode) + " :is unknown mode char to me\r\n");
     }
 }

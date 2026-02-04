@@ -27,7 +27,6 @@ public:
     Client(int fd);
     ~Client();
 
-    // Getters
     int                 getClientFd(void) const;
     std::string         getNickname(void) const; 
     std::string         getUsername(void) const;
@@ -39,7 +38,6 @@ public:
     std::vector<std::string> getChannels(void) const;
     bool                isOperator(const std::string& channel) const;
 
-    // Setters
     void                setNickname(const std::string& getNickname);
     void                setUsername(const std::string& username);
     void                setRealname(const std::string& realname);
@@ -48,13 +46,11 @@ public:
     void                setRegistered(bool status);
     void                setOperator(const std::string& channel, bool status);
 
-    // Buffer management
     void                appendBuffer(const std::string& data);
     void                clearBuffer(void);
     bool                hasCompleteMessage(void) const;
     std::string         getNextMessage(void);
 
-    // Channel management
     void                joinChannel(const std::string& channel);
     void                leaveChannel(const std::string& channel);
     bool                isInChannel(const std::string& channel) const;

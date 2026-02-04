@@ -3,12 +3,6 @@
 #include "../../inc/command_helpers.hpp"
 #include <set>
 
-// RFC 2812 - NICK command
-// Syntax: NICK <nickname>
-// Numeric replies: ERR_NONICKNAMEGIVEN (431), ERR_ERRONEUSNICKNAME (432),
-//                  ERR_NICKNAMEINUSE (433), ERR_NICKCOLLISION (436),
-//                  ERR_RESTRICTED (484)
-
 static bool isValidNickname(const std::string& nick)
 {
     if (nick.empty() || nick.length() > 9)
@@ -62,13 +56,10 @@ void Server::nickCommand(IRCMessage& msg)
         std::string oldUser = cli.getUsername();
         std::string oldHost = cli.getHostname();
 
-        // Mesaj: :EskiNick!User@Host NICK :YeniNick
         std::string msgToSend = ":" + oldNick + "!" + oldUser + "@" + oldHost + " NICK :" + newNick + "\r\n";
         
-        // Kendisine bildir
         send(msg.fd, msgToSend.c_str(), msgToSend.length(), 0);
         
-        // Ortak kanallardaki kullanıcılara bildir
         broadcastToCommonChannels(this, cli, msgToSend, msg.fd);
     }
     cli.setNickname(newNick);

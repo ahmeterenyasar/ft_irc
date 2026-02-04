@@ -5,13 +5,13 @@
 #include <vector>
 #include <string>
 #include <unistd.h>
-#include <arpa/inet.h> // inet_pton ve inet_ntop için IP adresi dönüşümleri için kullanılan kütüphane
-#include <sys/socket.h> // socket oluşturmak için 
-#include <netinet/in.h> // sockaddr_in yapısı için
+#include <arpa/inet.h> 
+#include <sys/socket.h> 
+#include <netinet/in.h> 
 #include <stdexcept>
-#include <poll.h>	// poll için
-#include <fcntl.h> // fcntl için 
-#include <cerrno> // errno için
+#include <poll.h>	
+#include <fcntl.h> 
+#include <cerrno>
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -26,42 +26,40 @@
 class Server
 {
 	private:
-		int  _server_fd; // Sunucu soket dosya tanıtıcısı
-		int			_port; // Sunucu portu
-		std::string	_password; // Sunucu parolası
-		struct sockaddr_in _serverAddr; // Sunucu adres bilgisi
-		std::vector<struct pollfd> _pollFds; // poll için kullanılan dosya tanıtıcıları
-		std::map<int, std::string> _inbuf; // İstemcilerden gelen verileri depolamak için
-		std::map<size_t, Client> _clients; // Bağlı istemciler
-		std::vector<Channel> _channels; // IRC kanalları
-		static bool _signalReceived; // Signal flag
-	bool _isShutdown; // Shutdown flag to prevent double shutdown
+		int  _server_fd;
+		int			_port; 
+		std::string	_password;
+		struct sockaddr_in _serverAddr;
+		std::vector<struct pollfd> _pollFds; 
+		std::map<int, std::string> _inbuf; 
+		std::map<size_t, Client> _clients; 
+		std::vector<Channel> _channels; 
+		static bool _signalReceived; 
+	bool _isShutdown;
 public:
 	Server();		Server(int port, const std::string& password);
 		Server(const Server &other);
 		Server& operator=(const Server& other);
 		~Server();
 
-		void init(); // Sunucuyu başlatmak için
-		void start_sockaddr_struct(); // sockaddr_in yapısını başlatmak için
-        void socket_initialization(); // socket oluşturma
-        void socket_configuration(); // setsockopt ve fcntl ayarları
-        void server_bind(); // bind işlemi
-        void server_listen(); // listen işlemi
-		void init_run(); // pollfd yapılarını başlatmak için
-        void run(); // Sunucuyu çalıştırmak için
-		void accept_new_connection(); // Yeni bağlantıları kabul etmek için
-		void disconnectClient(size_t index); // İstemci bağlantısını kesmek için
-		void client_read(size_t fd, size_t index); // İstemciden veri okumak için
+		void init();
+		void start_sockaddr_struct();
+        void socket_initialization(); 
+        void socket_configuration(); 
+        void server_bind();
+        void server_listen(); 
+		void init_run();
+        void run();
+		void accept_new_connection(); 
+		void disconnectClient(size_t index);
+		void client_read(size_t fd, size_t index); 
 		void sendSimpleWelcome(int clientFd);
-		void shutdown(); // Graceful shutdown
-		static void signalHandler(int signum); // Signal handler
+		void shutdown(); 
+		static void signalHandler(int signum);
 		
-		// Commands Section - Utility
 		void sendReply(int fd, const std::string &reply);
 		void executeCommand(IRCMessage& msg);
 
-		// Commands Section - Connection Registration
 		void passCommand(IRCMessage& msg);
 		void nickCommand(IRCMessage& msg);
 		void cmdUser(IRCMessage& msg);
@@ -71,27 +69,22 @@ public:
 		void whoCommand(IRCMessage& msg);
 		void listCommand(IRCMessage& msg);
 
-		// Commands Section - Channel Operations
 		void joinCommand(IRCMessage& msg);
 		void partCommand(IRCMessage& msg);
 		void topicCommand(IRCMessage& msg);
 		void kickCommand(IRCMessage& msg);
 		void inviteCommand(IRCMessage& msg);
 
-		// Commands Section - Mode
 		void modeCommand(IRCMessage& msg);
 		void handleChannelMode(IRCMessage& msg, const std::string& nick, const std::string& channel);
 		void handleUserMode(IRCMessage& msg, const std::string& nick, const std::string& target);
 
-		// Commands Section - Messaging
 		void privmsgCommand(IRCMessage& msg);
 		void noticeCommand(IRCMessage& msg);
 		bool haschannel(std::string name);
 
-		// User list for NAMES reply (placeholder - needs nick mapping)
     	std::string getUserList(const Channel& channel) const;
 		
-		// Getters for helper functions
 		std::map<size_t, Client>& getClients() { return _clients; }
 		std::vector<Channel>& getChannels() { return _channels; }
 };

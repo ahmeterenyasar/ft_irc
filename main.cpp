@@ -15,7 +15,6 @@ int main(int argc, char **argv)
         return 1;
     }
     
-    // Setup signal handlers
     signal(SIGINT, Server::signalHandler);
     signal(SIGQUIT, Server::signalHandler);
     

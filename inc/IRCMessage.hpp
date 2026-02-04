@@ -11,10 +11,10 @@ class IRCMessage
   public:
     IRCMessage();
 
-    std::string Prefix;            // Sender (Nick or Server)
-    std::string Command;           // COMMAND (e.g., "PRIVMSG" or "001")
-    std::vector<std::string> Parameters;  // Parameter list
-    size_t fd;                     // File descriptor of the sender
+    std::string Prefix;
+    std::string Command;
+    std::vector<std::string> Parameters;
+    size_t fd;
 };
 IRCMessage parser(std::string line, size_t fd);
 #endif

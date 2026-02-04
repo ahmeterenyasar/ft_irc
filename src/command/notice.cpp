@@ -2,10 +2,6 @@
 #include "../../inc/server.hpp"
 #include "../../inc/command_helpers.hpp"
 
-// RFC 2812 - NOTICE command
-// Syntax: NOTICE <target>{,<target>} :<message>
-// NOTICE is similar to PRIVMSG but MUST NOT generate automatic replies
-// No numeric replies are sent for NOTICE command errors
 void Server::noticeCommand(IRCMessage &msg)
 {
 	Channel	*channel;

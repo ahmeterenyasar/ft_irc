@@ -35,18 +35,16 @@ int main(int argc, char const *argv[]) {
     int port = SERVER_PORT;
     std::string password = BOT_PASS;
 
-    // Argüman kontrolünü iyileştirdik
     if (argc >= 2)
         port = atoi(argv[1]);
     if (argc >= 3)
         password = argv[2];
 
     struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));       // Yapıyı sıfırla
-    sa.sa_handler = signalHandler;    // Handler fonksiyonunu ata
-    sigemptyset(&sa.sa_mask);         // Maskeyi temizle
-    sa.sa_flags = 0;                  // ÖNEMLİ: SA_RESTART bayrağını VERMİYORUZ.
-                                      // Bu sayede recv() sinyal gelince kesilecek.
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = signalHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
     
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         std::cerr << "Error setting up signal handler" << std::endl;
@@ -75,7 +73,6 @@ int main(int argc, char const *argv[]) {
 
     std::cout << "Connected to server! Bot starting..." << std::endl;
 
-    // Handshake
     sendRaw(sock, "PASS " + password);
     sendRaw(sock, "NICK " + std::string(BOT_NICK));
     sendRaw(sock, "USER botuser 0 * :Bot Description");
@@ -88,9 +85,7 @@ int main(int argc, char const *argv[]) {
         int bytesRead = recv(sock, tempBuffer, 4095, 0);
 
         if (bytesRead < 0) {
-            // Sinyal yakalandığında buraya düşecek
             if (errno == EINTR) {
-                // Sinyal nedeniyle kesildi, isRunning false olduğu için döngüden çıkacak
                 break; 
             }
             std::cerr << "Recv error" << std::endl;

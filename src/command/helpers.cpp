@@ -3,7 +3,6 @@
 #include "../../inc/command_helpers.hpp"
 #include <set>
 
-// ========== VALIDATION HELPERS ==========
 
 bool checkRegistered(Server* server, IRCMessage& msg, const Client& cli)
 {
@@ -49,7 +48,6 @@ bool checkUserInChannel(Server* server, IRCMessage& msg, const Client& cli, Chan
     return true;
 }
 
-// ========== LOOKUP HELPERS ==========
 
 Client* findClientByNick(Server* server, const std::string& nickname, size_t& fd)
 {
@@ -77,7 +75,6 @@ Channel* findChannel(Server* server, const std::string& channelName)
     return NULL;
 }
 
-// ========== BROADCAST HELPERS ==========
 
 void broadcastToChannel(Server* server, Channel* channel, const std::string& message, size_t excludeFd)
 {
@@ -85,9 +82,7 @@ void broadcastToChannel(Server* server, Channel* channel, const std::string& mes
     for (size_t i = 0; i < members.size(); ++i)
     {
         if (excludeFd == 0 || members[i] != excludeFd)
-        {
             server->sendReply(members[i], message);
-        }
     }
 }
 
@@ -118,7 +113,6 @@ void broadcastToCommonChannels(Server* server, const Client& cli, const std::str
     }
 }
 
-// ========== CHANNEL MANAGEMENT HELPERS ==========
 
 void removeUserFromAllChannels(Server* server, size_t fd)
 {
@@ -151,13 +145,8 @@ void cleanupEmptyChannels(Server* server)
     for (size_t i = 0; i < channels.size(); )
     {
         if (channels[i].getUserCount() == 0)
-        {
             channels.erase(channels.begin() + i);
-            // Don't increment i, check same position again
-        }
         else
-        {
             ++i;
-        }
     }
 }
